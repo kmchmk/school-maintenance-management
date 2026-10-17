@@ -14,7 +14,11 @@ export async function getSignInSettings(): Promise<SignInSettings> {
   if (!pk) return FALLBACK;
   try {
     const host = Buffer.from(pk.split("_")[2] ?? "", "base64").toString().replace(/\$$/, "");
-    const res = await fetch(`https://${host}/v1/environment`, { next: { revalidate: 300 } });
+    // Production keys on *.vercel.app have no Clerk DNS records; Clerk is reached through the /__clerk auto-proxy.
+    const prodHost = process.env.VERCEL_PROJECT_PRODUCTION_URL;
+    const base =
+      pk.startsWith("pk_live_") && prodHost?.endsWith(".vercel.app") ? `https://${prodHost}/__clerk` : `https://${host}`;
+    const res = await fetch(`${base}/v1/environment`, { next: { revalidate: 300 } });
     if (!res.ok) return FALLBACK;
     const attrs = (await res.json()).user_settings?.attributes;
     return {
