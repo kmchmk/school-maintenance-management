@@ -29,6 +29,19 @@ In the Clerk dashboard → **User & authentication**:
 - Enable **Password**.
 - Disable email/phone sign-in methods if only username/password is wanted.
 
+### Production on `*.vercel.app`
+
+Clerk production keys work on `school-maintenance-management.vercel.app`
+without DNS records: `@clerk/nextjs` v7+ auto-proxies Clerk's Frontend API
+through `/__clerk` on the app's own origin. The middleware matcher includes
+`/__clerk/:path*` so those requests (including the clerk-js bundle) reach
+Clerk's middleware. Auth emails (verification and password-reset codes) go
+out via Clerk's shared `accounts.dev` email infrastructure.
+
+A custom domain is still recommended for fully branded production behavior:
+custom email templates, email-link authentication, and app/organization
+invitations.
+
 ## Environment variables
 
 See `.env.example`. Set the same values in the Vercel project settings.

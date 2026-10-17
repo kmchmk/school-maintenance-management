@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { SignedIn, SignedOut, SignInButton, UserButton } from "@clerk/nextjs";
+import { Show, SignInButton, UserButton } from "@clerk/nextjs";
 import { clerkConfigured } from "@/lib/config";
 
 export function Header() {
@@ -11,19 +11,19 @@ export function Header() {
         </Link>
         {clerkConfigured && (
           <nav className="flex items-center gap-4 text-sm">
-            <SignedIn>
+            <Show when="signed-in">
               <Link href="/tasks" className="hover:underline">
                 Tasks
               </Link>
               <UserButton />
-            </SignedIn>
-            <SignedOut>
+            </Show>
+            <Show when="signed-out">
               <SignInButton>
                 <button className="rounded-md bg-slate-900 px-3 py-1.5 text-white hover:bg-slate-700">
                   Sign in
                 </button>
               </SignInButton>
-            </SignedOut>
+            </Show>
           </nav>
         )}
       </div>
