@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#1d3fae" />
+    <title>Offline · Stafford Maintenance</title>
+    <style>
+      body { margin: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center; background: #f1f5f9; color: #0f172a; font-family: system-ui, -apple-system, sans-serif; padding: 24px; box-sizing: border-box; }
+      .card { max-width: 360px; text-align: center; background: #fff; border: 1px solid #e2e8f0; border-radius: 16px; padding: 32px 24px; }
+      img { width: 64px; height: 64px; border-radius: 14px; }
+      h1 { font-size: 20px; margin: 16px 0 8px; }
+      p { color: #475569; font-size: 14px; line-height: 1.5; margin: 0 0 20px; }
+      button { background: #1d3fae; color: #fff; border: 0; border-radius: 8px; padding: 12px 20px; font-size: 15px; width: 100%; }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <img src="/icons/icon-192.png" alt="" />
+      <h1>You're offline</h1>
+      <p>Check your Wi-Fi or mobile data. Your work orders will load again as soon as you're connected.</p>
+      <button onclick="location.reload()">Try again</button>
+    </div>
+  </body>
+</html>

@@ -1,0 +1,214 @@
+"use server";
+
+import { and, eq, inArray } from "drizzle-orm";
+import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
+import { after } from "next/server";
+import { db } from "@/db";
+import { profiles, workOrderEvents, workOrders, type Profile, type WorkOrder } from "@/db/schema";
+import { isAdmin, isManager, requireProfile } from "@/lib/auth";
+import { BUILDINGS, PRIORITIES, WORK_TYPES } from "@/lib/constants";
+import { today } from "@/lib/dates";
+import { type ActionState, oneOf, optDate, optStr, str } from "@/lib/forms";
+import { notifyWorkOrder } from "@/lib/notify";
+import { photoFiles, savePhotos, validatePhotos } from "@/lib/photos";
+
+async function loadWorkOrder(id: number): Promise<WorkOrder> {
+  const [wo] = await db.select().from(workOrders).where(eq(workOrders.id, id));
+  if (!wo) throw new Error("Work order not found");
+  return wo;
+}
+
+async function validAssignee(id: string | null): Promise<string | null> {
+  if (!id) return null;
+  const [p] = await db
+    .select({ id: profiles.id })
+    .from(profiles)
+    .where(and(eq(profiles.id, id), eq(profiles.active, true), inArray(profiles.role, ["admin", "supervisor", "staff"])));
+  return p?.id ?? null;
+}
+
+async function logEvent(workOrderId: number, actor: Profile, type: typeof workOrderEvents.$inferInsert.type, note?: string | null) {
+  await db.insert(workOrderEvents).values({ workOrderId, actorId: actor.id, type, note: note || null });
+}
+
+function canWork(profile: Profile, wo: WorkOrder) {
+  return isManager(profile.role) || wo.assignedToId === profile.id;
+}
+
+function refresh(id?: number) {
+  revalidatePath("/", "layout");
+  if (id) revalidatePath(`/work-orders/${id}`);
+}
+
+function readDetails(formData: FormData) {
+  return {
+    reportedDate: optDate(formData, "reportedDate") ?? today(),
+    reportedBy: str(formData, "reportedBy"),
+    type: oneOf(formData, "type", WORK_TYPES),
+    building: oneOf(formData, "building", BUILDINGS),
+    classroom: optStr(formData, "classroom"),
+    description: str(formData, "description"),
+    priority: oneOf(formData, "priority", PRIORITIES, "normal"),
+    dueDate: optDate(formData, "dueDate"),
+  };
+}
+
+export async function createWorkOrder(_: ActionState, formData: FormData): Promise<ActionState> {
+  const me = await requireProfile(["admin", "supervisor"]);
+  const details = readDetails(formData);
+  if (!details.reportedBy) return { error: "Enter who reported the issue." };
+  if (!details.description) return { error: "Enter a work description." };
+
+  const files = photoFiles(formData);
+  const photoError = validatePhotos(files);
+  if (photoError) return { error: photoError };
+
+  const assignedToId = await validAssignee(optStr(formData, "assignedToId"));
+  const now = new Date();
+  const [wo] = await db
+    .insert(workOrders)
+    .values({
+      ...details,
+      status: assignedToId ? "assigned" : "open",
+      assignedToId,
+      assignedAt: assignedToId ? now : null,
+      createdById: me.id,
+    })
+    .returning({ id: workOrders.id });
+
+  await logEvent(wo.id, me, "created");
+  if (assignedToId) {
+    await logEvent(wo.id, me, "assigned");
+    after(() => notifyWorkOrder(wo.id, "assigned"));
+  }
+  await savePhotos(wo.id, "report", files, me.id);
+
+  refresh();
+  redirect(`/work-orders/${wo.id}?created=1`);
+}
+
+export async function updateWorkOrder(id: number, _: ActionState, formData: FormData): Promise<ActionState> {
+  const me = await requireProfile(["admin", "supervisor"]);
+  const wo = await loadWorkOrder(id);
+  const details = readDetails(formData);
+  if (!details.reportedBy) return { error: "Enter who reported the issue." };
+  if (!details.description) return { error: "Enter a work description." };
+
+  await db.update(workOrders).set({ ...details, updatedAt: new Date() }).where(eq(workOrders.id, wo.id));
+  await logEvent(wo.id, me, "updated");
+  refresh(wo.id);
+  redirect(`/work-orders/${wo.id}`);
+}
+
+export async function assignWorkOrder(id: number, _: ActionState, formData: FormData): Promise<ActionState> {
+  const me = await requireProfile(["admin", "supervisor"]);
+  const wo = await loadWorkOrder(id);
+  if (wo.status === "completed" || wo.status === "closed") {
+    return { error: "Reopen the work order before reassigning it." };
+  }
+  const assignedToId = await validAssignee(optStr(formData, "assignedToId"));
+  if (!assignedToId) return { error: "Choose who should do the work." };
+  if (assignedToId === wo.assignedToId) return { ok: "Already assigned to this person." };
+
+  const dueDate = optDate(formData, "dueDate") ?? wo.dueDate;
+  await db
+    .update(workOrders)
+    .set({ assignedToId, assignedAt: new Date(), startedAt: null, status: "assigned", dueDate, updatedAt: new Date() })
+    .where(eq(workOrders.id, wo.id));
+
+  const [assignee] = await db.select({ name: profiles.fullName }).from(profiles).where(eq(profiles.id, assignedToId));
+  await logEvent(wo.id, me, "assigned", `Assigned to ${assignee?.name ?? "user"}`);
+  after(() => notifyWorkOrder(wo.id, "assigned"));
+  refresh(wo.id);
+  redirect(`/work-orders/${wo.id}?done=assigned`);
+}
+
+export async function startWorkOrder(id: number): Promise<void> {
+  const me = await requireProfile();
+  const wo = await loadWorkOrder(id);
+  if (!canWork(me, wo) || wo.status !== "assigned") return;
+  await db.update(workOrders).set({ status: "in_progress", startedAt: new Date(), updatedAt: new Date() }).where(eq(workOrders.id, wo.id));
+  await logEvent(wo.id, me, "started");
+  refresh(wo.id);
+  redirect(`/work-orders/${wo.id}?done=started`);
+}
+
+export async function completeWorkOrder(id: number, _: ActionState, formData: FormData): Promise<ActionState> {
+  const me = await requireProfile();
+  const wo = await loadWorkOrder(id);
+  if (!canWork(me, wo)) return { error: "Only the assigned person can complete this work order." };
+  if (wo.status !== "assigned" && wo.status !== "in_progress") return { error: "This work order is not open for completion." };
+
+  const files = photoFiles(formData);
+  if (files.length === 0) return { error: "Add at least one photo as proof of the completed work." };
+  const photoError = validatePhotos(files);
+  if (photoError) return { error: photoError };
+
+  const notes = optStr(formData, "notes");
+  const now = new Date();
+  await db
+    .update(workOrders)
+    .set({ status: "completed", completedAt: now, startedAt: wo.startedAt ?? now, completionNotes: notes, updatedAt: now })
+    .where(eq(workOrders.id, wo.id));
+  await savePhotos(wo.id, "completion", files, me.id);
+  await logEvent(wo.id, me, "completed", notes);
+  after(() => notifyWorkOrder(wo.id, "completed", notes));
+  refresh(wo.id);
+  redirect(`/work-orders/${wo.id}?done=completed`);
+}
+
+export async function closeWorkOrder(id: number, _: ActionState, formData: FormData): Promise<ActionState> {
+  const me = await requireProfile(["admin"]);
+  const wo = await loadWorkOrder(id);
+  if (wo.status !== "completed") return { error: "Only completed work orders can be closed." };
+  const note = optStr(formData, "note");
+  await db.update(workOrders).set({ status: "closed", closedAt: new Date(), closedById: me.id, updatedAt: new Date() }).where(eq(workOrders.id, wo.id));
+  await logEvent(wo.id, me, "closed", note);
+  after(() => notifyWorkOrder(wo.id, "closed", note));
+  refresh(wo.id);
+  redirect(`/work-orders/${wo.id}?done=closed`);
+}
+
+export async function reopenWorkOrder(id: number, _: ActionState, formData: FormData): Promise<ActionState> {
+  const me = await requireProfile(["admin"]);
+  const wo = await loadWorkOrder(id);
+  if (wo.status !== "completed" && wo.status !== "closed") return { error: "Only completed or closed work orders can be reopened." };
+  const note = optStr(formData, "note");
+  if (!note) return { error: "Explain why the work order is being reopened." };
+  await db
+    .update(workOrders)
+    .set({
+      status: wo.assignedToId ? "assigned" : "open",
+      startedAt: null,
+      completedAt: null,
+      closedAt: null,
+      closedById: null,
+      reopenCount: wo.reopenCount + 1,
+      updatedAt: new Date(),
+    })
+    .where(eq(workOrders.id, wo.id));
+  await logEvent(wo.id, me, "reopened", note);
+  after(() => notifyWorkOrder(wo.id, "reopened", note));
+  refresh(wo.id);
+  redirect(`/work-orders/${wo.id}?done=reopened`);
+}
+
+export async function addComment(id: number, _: ActionState, formData: FormData): Promise<ActionState> {
+  const me = await requireProfile();
+  const wo = await loadWorkOrder(id);
+  if (!canWork(me, wo)) return { error: "You can't comment on this work order." };
+  const note = optStr(formData, "note");
+  if (!note) return { error: "Write a comment first." };
+  await logEvent(wo.id, me, "comment", note);
+  refresh(wo.id);
+  return { ok: "Comment added." };
+}
+
+export async function deleteWorkOrder(id: number): Promise<void> {
+  const me = await requireProfile(["admin"]);
+  if (!isAdmin(me.role)) return;
+  await db.delete(workOrders).where(eq(workOrders.id, id));
+  refresh();
+  redirect("/work-orders");
+}
