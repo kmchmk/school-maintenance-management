@@ -33,7 +33,9 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
   return (
     <html lang="en">
       <body className={`${geistSans.variable} font-sans antialiased`}>
-        <ClerkProvider>{children}</ClerkProvider>
+        <ClerkProvider signInUrl="/sign-in" signUpUrl="/sign-up" afterSignOutUrl="/">
+          {children}
+        </ClerkProvider>
         <ServiceWorker />
       </body>
     </html>
