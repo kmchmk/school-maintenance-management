@@ -4,7 +4,7 @@ import { AuthShell } from "@/components/auth-shell";
 export default function SignInPage() {
   return (
     <AuthShell>
-      <SignIn fallbackRedirectUrl="/dashboard" />
+      <SignIn withSignUp fallbackRedirectUrl="/dashboard" signUpFallbackRedirectUrl="/dashboard" />
     </AuthShell>
   );
 }
