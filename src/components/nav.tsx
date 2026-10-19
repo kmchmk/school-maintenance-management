@@ -2,6 +2,7 @@
 
 import {
   BarChart3,
+  LayoutList,
   CalendarClock,
   ClipboardList,
   House,
@@ -23,6 +24,7 @@ const ITEMS: Item[] = [
   { href: "/dashboard", label: "Home", icon: House },
   { href: "/work-orders", label: "Work orders", icon: ClipboardList },
   { href: "/work-orders/new", label: "New", icon: Plus, roles: ["admin", "supervisor"] },
+  { href: "/board", label: "Board", icon: LayoutList, roles: ["admin", "supervisor"] },
   { href: "/reports", label: "Reports", icon: BarChart3, roles: ["admin", "supervisor"] },
   { href: "/schedules", label: "Preventive", icon: CalendarClock, roles: ["admin", "supervisor"] },
   { href: "/users", label: "Users", icon: Users, roles: ["admin"] },

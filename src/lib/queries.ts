@@ -76,7 +76,9 @@ export async function listWorkOrders(viewer: Profile, filters: WorkOrderFilters,
       reportedBy: workOrders.reportedBy,
       dueDate: workOrders.dueDate,
       completedAt: workOrders.completedAt,
+      assignedToId: workOrders.assignedToId,
       assigneeName: assignee.fullName,
+      assigneeTitle: assignee.jobTitle,
     })
     .from(workOrders)
     .leftJoin(assignee, eq(assignee.id, workOrders.assignedToId))
