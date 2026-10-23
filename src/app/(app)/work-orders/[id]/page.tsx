@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import { ActionForm, ConfirmButton, SubmitButton } from "@/components/form-controls";
 import { PhotoInput } from "@/components/photo-input";
 import { Alert, btn, ButtonLink, Card, cn, Field, inputClass, PriorityText, StatusBadge } from "@/components/ui";
-import { canAssign, isManager, requireProfile } from "@/lib/auth";
+import { canAssign, canCreate, isManager, requireProfile } from "@/lib/auth";
 import { BUILDING_LABELS, WORK_TYPE_LABELS } from "@/lib/constants";
 import { formatDate, formatDateTime, today, workOrderRef } from "@/lib/dates";
 import { getWorkOrderDetail, listAssignees } from "@/lib/queries";
@@ -103,7 +103,7 @@ export default async function WorkOrderPage({
             {wo.classroom ? ` · ${wo.classroom}` : ""}
           </h1>
         </div>
-        {manager && (
+        {canCreate(me.role) && (
           <ButtonLink href={`/work-orders/${wo.id}/edit`} variant="secondary" className="self-start">
             <Pencil className="size-4" /> Edit
           </ButtonLink>

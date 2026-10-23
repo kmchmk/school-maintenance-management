@@ -40,6 +40,8 @@ export const profiles = pgTable("profiles", {
   jobTitle: text("job_title"),
   role: roleEnum("role").notNull().default("pending"),
   active: boolean("active").notNull().default(true),
+  /** Set when an admin deletes the account. The row stays so work order history keeps the name. */
+  deletedAt: timestamp("deleted_at", { withTimezone: true }),
   ...timestamps,
 });
 

@@ -1,7 +1,7 @@
 import { Plus, Search } from "lucide-react";
 import { ButtonLink, EmptyState, inputClass, PageHeader, btn, cn } from "@/components/ui";
 import { WorkOrderList } from "@/components/work-order-list";
-import { isManager, requireProfile } from "@/lib/auth";
+import { canCreate, isManager, requireProfile } from "@/lib/auth";
 import { BUILDING_LABELS, BUILDINGS, STATUS_LABELS, STATUSES, WORK_TYPE_LABELS, WORK_TYPES } from "@/lib/constants";
 import { listAssignees, listWorkOrders, type WorkOrderFilters } from "@/lib/queries";
 
@@ -21,7 +21,7 @@ export default async function WorkOrdersPage({ searchParams }: { searchParams: P
         title={manager ? "Work orders" : "My work orders"}
         description={`${rows.length}${rows.length === 100 ? "+" : ""} shown`}
         actions={
-          manager && (
+          canCreate(me.role) && (
             <ButtonLink href="/work-orders/new">
               <Plus className="size-4" /> New work order
             </ButtonLink>
@@ -78,7 +78,7 @@ export default async function WorkOrdersPage({ searchParams }: { searchParams: P
 
       {rows.length === 0 ? (
         <EmptyState title="No work orders found">
-          {filtered ? "Try changing the filters." : manager ? "Create the first work order to get started." : "Nothing is assigned to you right now."}
+          {filtered ? "Try changing the filters." : canCreate(me.role) ? "Create the first work order to get started." : manager ? "No work orders yet." : "Nothing is assigned to you right now."}
         </EmptyState>
       ) : (
         <WorkOrderList rows={rows} />

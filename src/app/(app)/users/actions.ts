@@ -2,11 +2,11 @@
 
 import { clerkClient } from "@clerk/nextjs/server";
 import { isClerkAPIResponseError } from "@clerk/nextjs/errors";
-import { eq } from "drizzle-orm";
+import { and, count, eq, inArray, isNull, ne } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { db } from "@/db";
-import { profiles } from "@/db/schema";
+import { profiles, schedules, workOrderEvents, workOrders } from "@/db/schema";
 import { requireProfile } from "@/lib/auth";
 import { getSignInSettings } from "@/lib/clerk-settings";
 import { ROLES, USER_ADMIN_ROLES } from "@/lib/constants";
@@ -115,4 +115,53 @@ export async function approveUser(id: string, formData: FormData): Promise<void>
   const role = oneOf(formData, "role", ROLES.filter((r) => r !== "pending"));
   await db.update(profiles).set({ role, updatedAt: new Date() }).where(eq(profiles.id, id));
   revalidatePath("/users");
+}
+
+/**
+ * Removes the account from Clerk so it can no longer sign in. The profile row is kept (anonymised)
+ * so closed work still shows who did it; work the person still had open goes back to the manager.
+ */
+export async function deleteUser(id: string): Promise<void> {
+  const me = await requireProfile(USER_ADMIN_ROLES);
+  if (id === me.id) redirect(`/users/${id}?error=self`);
+  const [user] = await db.select().from(profiles).where(and(eq(profiles.id, id), isNull(profiles.deletedAt)));
+  if (!user) redirect("/users");
+
+  if (USER_ADMIN_ROLES.includes(user.role) && user.active) {
+    const [others] = await db
+      .select({ n: count() })
+      .from(profiles)
+      .where(and(inArray(profiles.role, USER_ADMIN_ROLES), eq(profiles.active, true), ne(profiles.id, id)));
+    if (!others.n) redirect(`/users/${id}?error=last`);
+  }
+
+  try {
+    const client = await clerkClient();
+    await client.users.deleteUser(id);
+  } catch (err) {
+    // Already gone from Clerk: carry on and tidy up the profile.
+    if (!(isClerkAPIResponseError(err) && err.status === 404)) {
+      console.error(err);
+      redirect(`/users/${id}?error=clerk`);
+    }
+  }
+
+  const now = new Date();
+  const unassigned = await db
+    .update(workOrders)
+    .set({ assignedToId: null, assignedAt: null, startedAt: null, status: "open", updatedAt: now })
+    .where(and(eq(workOrders.assignedToId, id), inArray(workOrders.status, ["assigned", "in_progress"])))
+    .returning({ id: workOrders.id });
+  if (unassigned.length) {
+    await db.insert(workOrderEvents).values(
+      unassigned.map((wo) => ({ workOrderId: wo.id, actorId: me.id, type: "updated" as const, note: `Unassigned: ${user.fullName}'s account was deleted.` })),
+    );
+  }
+  await db.update(schedules).set({ assignedToId: null, updatedAt: now }).where(eq(schedules.assignedToId, id));
+  await db
+    .update(profiles)
+    .set({ active: false, deletedAt: now, username: null, email: null, updatedAt: now })
+    .where(eq(profiles.id, id));
+  revalidatePath("/", "layout");
+  redirect(`/users?deleted=${encodeURIComponent(user.fullName)}`);
 }

@@ -7,7 +7,7 @@ import { after } from "next/server";
 import { db } from "@/db";
 import { profiles, workOrderEvents, workOrders, type Profile, type WorkOrder } from "@/db/schema";
 import { canAssign, isManager, requireProfile } from "@/lib/auth";
-import { ASSIGNABLE_ROLES, ASSIGNER_ROLES, BUILDINGS, PRIORITIES, WORK_ROLES, WORK_TYPES } from "@/lib/constants";
+import { ASSIGNABLE_ROLES, ASSIGNER_ROLES, BUILDINGS, CREATOR_ROLES, PRIORITIES, WORK_TYPES } from "@/lib/constants";
 import { today } from "@/lib/dates";
 import { type ActionState, oneOf, optDate, optStr, str } from "@/lib/forms";
 import { notifyWorkOrder } from "@/lib/notify";
@@ -60,7 +60,7 @@ function readDetails(formData: FormData) {
 }
 
 export async function createWorkOrder(_: ActionState, formData: FormData): Promise<ActionState> {
-  const me = await requireProfile(WORK_ROLES);
+  const me = await requireProfile(CREATOR_ROLES);
   const details = readDetails(formData);
   if (!details.reportedBy) return { error: "Enter who reported the issue." };
   if (!details.description) return { error: "Enter a work description." };
@@ -97,7 +97,7 @@ export async function createWorkOrder(_: ActionState, formData: FormData): Promi
 }
 
 export async function updateWorkOrder(id: number, _: ActionState, formData: FormData): Promise<ActionState> {
-  const me = await requireProfile(WORK_ROLES);
+  const me = await requireProfile(CREATOR_ROLES);
   const wo = await loadWorkOrder(id);
   const details = readDetails(formData);
   if (!details.reportedBy) return { error: "Enter who reported the issue." };

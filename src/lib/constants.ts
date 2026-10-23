@@ -12,8 +12,10 @@ export const ROLE_LABELS: Record<Role, string> = {
   pending: "Pending approval",
 };
 
-/** Can see all work, raise and edit work orders, and view the board and reports. */
+/** Can see all work, and view the board and reports. */
 export const WORK_ROLES: Role[] = ["manager", "admin", "supervisor"];
+/** Can raise and edit work orders. */
+export const CREATOR_ROLES: Role[] = ["manager", "admin"];
 /** Assigns people to work, closes or reopens it, deletes it and runs preventive schedules. */
 export const ASSIGNER_ROLES: Role[] = ["manager"];
 /** Manages user accounts. */

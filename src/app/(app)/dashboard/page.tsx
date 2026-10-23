@@ -5,7 +5,7 @@ import { Alert, ButtonLink, Card, cn, EmptyState, PageHeader } from "@/component
 import { WorkOrderList } from "@/components/work-order-list";
 import { db } from "@/db";
 import { workOrders } from "@/db/schema";
-import { canAssign, isManager, requireProfile } from "@/lib/auth";
+import { canAssign, canCreate, isManager, requireProfile } from "@/lib/auth";
 import { today } from "@/lib/dates";
 import { listWorkOrders, overdueCondition } from "@/lib/queries";
 
@@ -74,9 +74,11 @@ export default async function DashboardPage() {
         title={`Hi ${firstName}`}
         description="Overview of maintenance work across the school."
         actions={
-          <ButtonLink href="/work-orders/new">
-            <Plus className="size-4" /> New work order
-          </ButtonLink>
+          canCreate(me.role) && (
+            <ButtonLink href="/work-orders/new">
+              <Plus className="size-4" /> New work order
+            </ButtonLink>
+          )
         }
       />
       <div className="mb-8 grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-5">

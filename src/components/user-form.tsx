@@ -76,7 +76,7 @@ export function UserForm({
             <strong>Admin</strong>: school leadership. Raises and tracks work orders, sees the board and reports, and manages users.
           </p>
           <p>
-            <strong>Supervisor</strong>: raises and tracks work orders and can be assigned work.
+            <strong>Supervisor</strong>: tracks all work orders, sees the board and reports, and can be assigned work.
           </p>
           <p>
             <strong>Technician / Driver</strong>: sees and completes work assigned to them.

@@ -1,4 +1,4 @@
-import { asc } from "drizzle-orm";
+import { asc, isNull } from "drizzle-orm";
 import { ChevronRight, UserPlus } from "lucide-react";
 import Link from "next/link";
 import { SubmitButton } from "@/components/form-controls";
@@ -14,10 +14,10 @@ export const metadata = { title: "Users" };
 
 const ROLE_ORDER = { manager: 0, admin: 1, supervisor: 2, staff: 3, pending: 4 } as const;
 
-export default async function UsersPage({ searchParams }: { searchParams: Promise<{ created?: string }> }) {
+export default async function UsersPage({ searchParams }: { searchParams: Promise<{ created?: string; deleted?: string }> }) {
   await requireProfile(USER_ADMIN_ROLES);
-  const { created } = await searchParams;
-  const all = (await db.select().from(profiles).orderBy(asc(profiles.fullName))).sort(
+  const { created, deleted } = await searchParams;
+  const all = (await db.select().from(profiles).where(isNull(profiles.deletedAt)).orderBy(asc(profiles.fullName))).sort(
     (a, b) => Number(!a.active) - Number(!b.active) || ROLE_ORDER[a.role] - ROLE_ORDER[b.role],
   );
   const pending = all.filter((p) => p.role === "pending" && p.active);
@@ -35,6 +35,7 @@ export default async function UsersPage({ searchParams }: { searchParams: Promis
         }
       />
       {created && <div className="mb-4"><Alert tone="success">Account <strong>{created}</strong> created. Share the username and password with them.</Alert></div>}
+      {deleted && <div className="mb-4"><Alert tone="success"><strong>{deleted}</strong>&rsquo;s account was deleted.</Alert></div>}
 
       {pending.length > 0 && (
         <section className="mb-6">

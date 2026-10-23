@@ -10,15 +10,17 @@ Tailwind CSS · Vercel (hosting + daily cron)
 
 | Role | Who | Can do |
 | --- | --- | --- |
-| **Admin** | Maintenance manager, owner, MD, principal, heads of section | Everything: create/assign work orders, close or reopen completed work, manage users, schedules and reports |
-| **Supervisor** | Maintenance supervisor | Create, assign and track all work; preventive schedules; reports. Can also be assigned work |
-| **Technician / Staff** | Technicians, drivers | See work assigned to them, start it, complete it with photo proof, comment |
+| **Maintenance manager** | Maintenance manager | Raise work orders, assign them, close or reopen completed work, preventive schedules, board, reports, manage users. Can also be assigned work |
+| **Admin** | Owner, MD, principal, heads of section | Raise and edit work orders, track all work, board and reports, manage users |
+| **Supervisor** | Maintenance supervisor | Track all work, board and reports (can't raise work orders). Can be assigned work |
+| **Technician / Driver** | Technicians, drivers | See work assigned to them, start it, complete it with photo proof, comment |
 
 Work order flow (from the maintenance manager's requirements):
 
-1. A teacher reports an issue → an admin records it (date, reported by, type, building, classroom, description).
-2. The admin or supervisor assigns it to a worker (optionally with a due date). The worker gets an email.
-3. The worker starts the job and marks it completed with **at least one photo** as proof. Admins get an email.
+1. A teacher reports an issue → an admin or the manager records it (date, reported by, type, building, classroom, description).
+   The maintenance manager gets an email when new work is waiting to be assigned.
+2. The maintenance manager assigns it to a worker (optionally with a due date). The worker gets an email.
+3. The worker starts the job and marks it completed with **at least one photo** as proof. The manager gets an email.
 4. The maintenance manager reviews the photos and **closes** it, or **reopens** it with a reason.
 
 Preventive maintenance schedules (weekly → yearly) create work orders automatically every day at
@@ -32,8 +34,10 @@ count, plus breakdowns by type and building and a CSV export.
 
 - The **first person to sign in** becomes an admin. Everyone else who signs up waits on a
   "pending" screen until an admin approves them on **Users**.
-- Admins can create accounts directly (**Users → Add user**), set passwords, change roles and
-  deactivate people (deactivation also bans them in Clerk).
+- Admins and the manager can create accounts directly (**Users → Add user**), set passwords, change
+  roles, deactivate people (deactivation also bans them in Clerk) and delete accounts. A deleted
+  account is removed from Clerk; its name stays on the work orders it was part of, and its open
+  work goes back to "waiting to be assigned".
 - Sign-in identifiers come from the Clerk instance settings. To sign in with **username + password**,
   enable *Username* in Clerk → User & authentication. The "Add user" form adapts automatically.
 

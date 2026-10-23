@@ -5,10 +5,12 @@ import { redirect } from "next/navigation";
 import { cache } from "react";
 import { db } from "@/db";
 import { profiles, type Profile } from "@/db/schema";
-import { ASSIGNER_ROLES, USER_ADMIN_ROLES, WORK_ROLES, type Role } from "./constants";
+import { ASSIGNER_ROLES, CREATOR_ROLES, USER_ADMIN_ROLES, WORK_ROLES, type Role } from "./constants";
 
-/** Sees all work orders and can raise them. */
+/** Sees all work orders. */
 export const isManager = (role: Role) => WORK_ROLES.includes(role);
+/** Raises and edits work orders. */
+export const canCreate = (role: Role) => CREATOR_ROLES.includes(role);
 /** Assigns, closes, reopens and deletes work (the maintenance manager). */
 export const canAssign = (role: Role) => ASSIGNER_ROLES.includes(role);
 export const canManageUsers = (role: Role) => USER_ADMIN_ROLES.includes(role);
