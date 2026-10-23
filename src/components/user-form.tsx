@@ -28,8 +28,8 @@ export function UserForm({
           </Field>
         ) : (
           signIn.username && (
-            <Field label="Username" htmlFor="username" required hint="Used to sign in. At least 4 characters, lowercase.">
-              <input id="username" name="username" required minLength={4} autoCapitalize="none" autoCorrect="off" autoComplete="off" className={inputClass} />
+            <Field label="Username" htmlFor="username" required hint="Used to sign in. At least 4 characters: lowercase letters, numbers, _ or -. e.g. suvin_w">
+              <input id="username" name="username" required minLength={4} pattern="[a-z0-9_\-]{4,64}" autoCapitalize="none" autoCorrect="off" autoComplete="off" className={inputClass} />
             </Field>
           )
         )}

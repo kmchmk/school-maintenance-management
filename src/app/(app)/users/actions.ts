@@ -36,8 +36,8 @@ export async function createUser(_: ActionState, formData: FormData): Promise<Ac
   const email = optStr(formData, "email")?.toLowerCase() ?? null;
   const role = oneOf(formData, "role", ROLES.filter((r) => r !== "pending"));
   if (!fullName) return { error: "Enter the person's name." };
-  if (username !== null && !/^[a-z0-9_.-]{4,64}$/.test(username)) {
-    return { error: "Username must be at least 4 characters: letters, numbers, dots, dashes or underscores." };
+  if (username !== null && !/^[a-z0-9_-]{4,64}$/.test(username)) {
+    return { error: "Username must be at least 4 characters: letters, numbers, dashes or underscores (no spaces or dots)." };
   }
   if (!username && !email) return { error: "Enter an email address — it is used to sign in." };
   if (settings.emailRequired && !email) return { error: "Clerk is set to require an email address for every account." };
@@ -53,7 +53,8 @@ export async function createUser(_: ActionState, formData: FormData): Promise<Ac
       ...(email && settings.email ? { emailAddress: [email] } : {}),
       password,
       firstName,
-      lastName: rest.join(" ") || undefined,
+      // Clerk may require a last name; people with a single name get a placeholder there only.
+      lastName: rest.join(" ") || "-",
     });
     userId = user.id;
   } catch (err) {
