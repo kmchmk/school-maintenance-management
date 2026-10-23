@@ -13,7 +13,7 @@ import { deleteUser, resetPassword, updateUser } from "../actions";
 
 const ERRORS: Record<string, string> = {
   self: "You can't delete your own account. Ask another admin to do it.",
-  last: "This is the last admin account. Give someone else admin or maintenance manager access first.",
+  last: "This is the last admin account. Give someone else Admin or Maintenance Manager access first.",
   clerk: "Couldn't delete the account in Clerk. Please try again.",
 };
 
@@ -39,8 +39,8 @@ export default async function EditUserPage({
       <Card className="p-4 sm:p-6">
         <h2 className="font-semibold text-slate-900">Reset password</h2>
         <ActionForm action={resetPassword.bind(null, id)} className="mt-3 space-y-3" resetOnSuccess>
-          <Field label="New password" htmlFor="new-password" hint="At least 8 characters. Signs them out of other devices.">
-            <input id="new-password" name="password" type="text" minLength={8} required autoComplete="new-password" className={inputClass} />
+          <Field label="New password" htmlFor="new-password" hint="8 to 15 characters. Signs them out of other devices.">
+            <input id="new-password" name="password" type="text" minLength={8} maxLength={15} required autoComplete="new-password" className={inputClass} />
           </Field>
           <SubmitButton variant="secondary">Set new password</SubmitButton>
         </ActionForm>

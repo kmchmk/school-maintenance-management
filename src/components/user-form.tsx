@@ -34,8 +34,8 @@ export function UserForm({
           )
         )}
         {!editing && (
-          <Field label="Temporary password" htmlFor="password" required hint="At least 8 characters. Share it with them in person.">
-            <input id="password" name="password" type="text" required minLength={8} autoComplete="new-password" className={inputClass} />
+          <Field label="Temporary password" htmlFor="password" required hint="8 to 15 characters. Share it with them in person.">
+            <input id="password" name="password" type="text" required minLength={8} maxLength={15} autoComplete="new-password" className={inputClass} />
           </Field>
         )}
         <Field label="Role" htmlFor="role" required>
@@ -69,7 +69,7 @@ export function UserForm({
         )}
         <div className="space-y-1 rounded-lg bg-slate-50 p-3 text-xs text-slate-600 sm:col-span-2">
           <p>
-            <strong>Maintenance manager</strong>: assigns technicians and drivers to work, closes or reopens it, runs preventive
+            <strong>Maintenance Manager</strong>: assigns technicians and drivers to work, closes or reopens it, runs preventive
             schedules and manages users.
           </p>
           <p>

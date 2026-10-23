@@ -5,7 +5,7 @@ export const TIME_ZONE = "Asia/Colombo";
 export const ROLES = ["manager", "admin", "supervisor", "staff", "pending"] as const;
 export type Role = (typeof ROLES)[number];
 export const ROLE_LABELS: Record<Role, string> = {
-  manager: "Maintenance manager",
+  manager: "Maintenance Manager",
   admin: "Admin",
   supervisor: "Supervisor",
   staff: "Technician / Driver",

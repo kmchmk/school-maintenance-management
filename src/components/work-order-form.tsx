@@ -104,7 +104,7 @@ export function WorkOrderForm({
       ) : (
         !editing && (
           <p className="rounded-lg bg-blue-50 px-4 py-3 text-sm text-blue-800">
-            The maintenance manager will be notified and will assign someone to this work order.
+            The Maintenance Manager will be notified and will assign someone to this work order.
           </p>
         )
       )}

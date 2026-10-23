@@ -22,7 +22,7 @@ const DONE_MESSAGES: Record<string, string> = {
   created: "Work order created.",
   assigned: "Assigned. It now shows on their dashboard.",
   started: "Work started.",
-  completed: "Marked as completed. The maintenance manager has been notified.",
+  completed: "Marked as completed. The Maintenance Manager has been notified.",
   closed: "Work order closed.",
   reopened: "Work order reopened and sent back to the assignee.",
 };

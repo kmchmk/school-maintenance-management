@@ -21,8 +21,8 @@ export default async function PendingPage() {
         </h1>
         <p className="mt-2 text-sm text-slate-600">
           {profile.active
-            ? `You're signed in as ${profile.fullName}, but an admin still needs to give you access. Ask the maintenance manager to approve your account.`
-            : "Your account has been deactivated. Contact the maintenance manager if you need access again."}
+            ? `You're signed in as ${profile.fullName}, but an admin still needs to give you access. Ask the Maintenance Manager to approve your account.`
+            : "Your account has been deactivated. Contact the Maintenance Manager if you need access again."}
         </p>
         <SignOutButton redirectUrl="/">
           <button className={cn(btn.base, btn.secondary, "mt-6 w-full")}>Sign out</button>

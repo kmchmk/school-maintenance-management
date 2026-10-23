@@ -41,7 +41,7 @@ export async function createUser(_: ActionState, formData: FormData): Promise<Ac
   }
   if (!username && !email) return { error: "Enter an email address — it is used to sign in." };
   if (settings.emailRequired && !email) return { error: "Clerk is set to require an email address for every account." };
-  if (password.length < 8) return { error: "Password must be at least 8 characters." };
+  if (password.length < 8 || password.length > 15) return { error: "Password must be 8 to 15 characters." };
   if (!validEmail(email)) return { error: "Enter a valid email address or leave it empty." };
 
   const [firstName, ...rest] = fullName.split(/\s+/);
@@ -100,7 +100,7 @@ export async function updateUser(id: string, _: ActionState, formData: FormData)
 export async function resetPassword(id: string, _: ActionState, formData: FormData): Promise<ActionState> {
   await requireProfile(USER_ADMIN_ROLES);
   const password = str(formData, "password");
-  if (password.length < 8) return { error: "Password must be at least 8 characters." };
+  if (password.length < 8 || password.length > 15) return { error: "Password must be 8 to 15 characters." };
   try {
     const client = await clerkClient();
     await client.users.updateUser(id, { password, signOutOfOtherSessions: true });

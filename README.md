@@ -10,18 +10,18 @@ Tailwind CSS · Vercel (hosting + daily cron)
 
 | Role | Who | Can do |
 | --- | --- | --- |
-| **Maintenance manager** | Maintenance manager | Raise work orders, assign them, close or reopen completed work, preventive schedules, board, reports, manage users. Can also be assigned work |
+| **Maintenance Manager** | Maintenance Manager | Raise work orders, assign them, close or reopen completed work, preventive schedules, board, reports, manage users. Can also be assigned work |
 | **Admin** | Owner, MD, principal, heads of section | Raise and edit work orders, track all work, board and reports, manage users |
 | **Supervisor** | Maintenance supervisor | Track all work, board and reports (can't raise work orders). Can be assigned work |
 | **Technician / Driver** | Technicians, drivers | See work assigned to them, start it, complete it with photo proof, comment |
 
-Work order flow (from the maintenance manager's requirements):
+Work order flow (from the Maintenance Manager's requirements):
 
-1. A teacher reports an issue → an admin or the manager records it (date, reported by, type, building, classroom, description).
-   The maintenance manager gets an email when new work is waiting to be assigned.
-2. The maintenance manager assigns it to a worker (optionally with a due date). The worker gets an email.
+1. A teacher reports an issue → an admin or the Maintenance Manager records it (date, reported by, type, building, classroom, description).
+   The Maintenance Manager gets an email when new work is waiting to be assigned.
+2. The Maintenance Manager assigns it to a worker (optionally with a due date). The worker gets an email.
 3. The worker starts the job and marks it completed with **at least one photo** as proof. The manager gets an email.
-4. The maintenance manager reviews the photos and **closes** it, or **reopens** it with a reason.
+4. The Maintenance Manager reviews the photos and **closes** it, or **reopens** it with a reason.
 
 Preventive maintenance schedules (weekly → yearly) create work orders automatically every day at
 06:00 Colombo time (`vercel.json` cron → `/api/cron/schedules`).
