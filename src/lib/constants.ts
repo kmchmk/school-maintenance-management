@@ -2,14 +2,24 @@ export const SCHOOL_NAME = "Stafford International School";
 export const APP_NAME = "Stafford Maintenance";
 export const TIME_ZONE = "Asia/Colombo";
 
-export const ROLES = ["admin", "supervisor", "staff", "pending"] as const;
+export const ROLES = ["manager", "admin", "supervisor", "staff", "pending"] as const;
 export type Role = (typeof ROLES)[number];
 export const ROLE_LABELS: Record<Role, string> = {
+  manager: "Maintenance manager",
   admin: "Admin",
   supervisor: "Supervisor",
-  staff: "Technician / Staff",
+  staff: "Technician / Driver",
   pending: "Pending approval",
 };
+
+/** Can see all work, raise and edit work orders, and view the board and reports. */
+export const WORK_ROLES: Role[] = ["manager", "admin", "supervisor"];
+/** Assigns people to work, closes or reopens it, deletes it and runs preventive schedules. */
+export const ASSIGNER_ROLES: Role[] = ["manager"];
+/** Manages user accounts. */
+export const USER_ADMIN_ROLES: Role[] = ["manager", "admin"];
+/** Can be given work. */
+export const ASSIGNABLE_ROLES: Role[] = ["manager", "supervisor", "staff"];
 
 export const WORK_TYPES = ["electrical", "hvac", "plumbing", "cctv", "fire", "other"] as const;
 export type WorkType = (typeof WORK_TYPES)[number];

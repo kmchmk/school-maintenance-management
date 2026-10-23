@@ -2,13 +2,14 @@ import { PageHeader } from "@/components/ui";
 import { UserForm } from "@/components/user-form";
 import { Alert } from "@/components/ui";
 import { requireProfile } from "@/lib/auth";
+import { USER_ADMIN_ROLES } from "@/lib/constants";
 import { getSignInSettings } from "@/lib/clerk-settings";
 import { createUser } from "../actions";
 
 export const metadata = { title: "Add user" };
 
 export default async function NewUserPage() {
-  await requireProfile(["admin"]);
+  await requireProfile(USER_ADMIN_ROLES);
   const signIn = await getSignInSettings();
   return (
     <div className="mx-auto max-w-3xl">

@@ -2,11 +2,11 @@ import "server-only";
 import { and, eq, inArray } from "drizzle-orm";
 import { db } from "@/db";
 import { profiles, workOrders } from "@/db/schema";
-import { APP_NAME, BUILDING_LABELS, PRIORITY_LABELS, WORK_TYPE_LABELS } from "./constants";
+import { APP_NAME, ASSIGNER_ROLES, BUILDING_LABELS, PRIORITY_LABELS, WORK_TYPE_LABELS } from "./constants";
 import { formatDate, workOrderRef } from "./dates";
 import { sendEmail } from "./email";
 
-type NotifyEvent = "assigned" | "completed" | "closed" | "reopened";
+type NotifyEvent = "created" | "assigned" | "completed" | "closed" | "reopened";
 
 function appUrl() {
   if (process.env.APP_URL) return process.env.APP_URL;
@@ -18,6 +18,7 @@ const escape = (s: string) =>
   s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
 
 const HEADLINES: Record<NotifyEvent, string> = {
+  created: "A new work order needs to be assigned",
   assigned: "A work order has been assigned to you",
   completed: "A work order has been completed and is awaiting closure",
   closed: "A work order has been closed",
@@ -32,13 +33,15 @@ export async function notifyWorkOrder(workOrderId: number, event: NotifyEvent, n
   let recipientIds: string[] = [];
   if (event === "assigned" || event === "reopened" || event === "closed") {
     if (wo.assignedToId) recipientIds = [wo.assignedToId];
-  } else if (event === "completed") {
-    // The person who raised it plus every admin, so the maintenance manager can close it.
-    const admins = await db
+  } else {
+    // New work goes to the maintenance manager to assign; completed work goes to the
+    // maintenance manager to close, and to whoever raised it.
+    const managers = await db
       .select({ id: profiles.id })
       .from(profiles)
-      .where(and(eq(profiles.role, "admin"), eq(profiles.active, true)));
-    recipientIds = [...admins.map((a) => a.id), ...(wo.createdById ? [wo.createdById] : [])];
+      .where(and(inArray(profiles.role, ASSIGNER_ROLES), eq(profiles.active, true)));
+    recipientIds = managers.map((m) => m.id);
+    if (event === "completed" && wo.createdById) recipientIds.push(wo.createdById);
   }
   if (recipientIds.length === 0) return;
 

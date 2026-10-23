@@ -4,14 +4,14 @@ import { alias } from "drizzle-orm/pg-core";
 import { db } from "@/db";
 import { profiles, workOrderEvents, workOrderPhotos, workOrders, type Profile } from "@/db/schema";
 import { isManager } from "./auth";
-import { BUILDINGS, STATUSES, WORK_TYPES, type Building, type Status, type WorkType } from "./constants";
+import { ASSIGNABLE_ROLES, BUILDINGS, STATUSES, WORK_TYPES, type Building, type Status, type WorkType } from "./constants";
 import { today } from "./dates";
 
 export async function listAssignees() {
   return db
     .select({ id: profiles.id, fullName: profiles.fullName, jobTitle: profiles.jobTitle, role: profiles.role })
     .from(profiles)
-    .where(and(eq(profiles.active, true), inArray(profiles.role, ["admin", "supervisor", "staff"])))
+    .where(and(eq(profiles.active, true), inArray(profiles.role, ASSIGNABLE_ROLES)))
     .orderBy(asc(profiles.fullName));
 }
 export type Assignee = Awaited<ReturnType<typeof listAssignees>>[number];

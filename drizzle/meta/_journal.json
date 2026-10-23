@@ -8,6 +8,13 @@
       "when": 1792269221776,
       "tag": "0000_init",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1792724297591,
+      "tag": "0001_maintenance_manager_role",
+      "breakpoints": true
     }
   ]
 }

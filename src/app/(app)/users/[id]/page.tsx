@@ -6,13 +6,14 @@ import { UserForm } from "@/components/user-form";
 import { db } from "@/db";
 import { profiles } from "@/db/schema";
 import { requireProfile } from "@/lib/auth";
+import { USER_ADMIN_ROLES } from "@/lib/constants";
 import { getSignInSettings } from "@/lib/clerk-settings";
 import { resetPassword, updateUser } from "../actions";
 
 export const metadata = { title: "Edit user" };
 
 export default async function EditUserPage({ params }: { params: Promise<{ id: string }> }) {
-  await requireProfile(["admin"]);
+  await requireProfile(USER_ADMIN_ROLES);
   const { id } = await params;
   const [user] = await db.select().from(profiles).where(eq(profiles.id, id));
   if (!user) notFound();

@@ -1,11 +1,11 @@
 import { and, count, eq, gte, sql, type SQL } from "drizzle-orm";
 import { AlertTriangle, CheckCircle2, ClipboardList, Hourglass, Inbox, Plus, type LucideIcon } from "lucide-react";
 import Link from "next/link";
-import { ButtonLink, Card, cn, EmptyState, PageHeader } from "@/components/ui";
+import { Alert, ButtonLink, Card, cn, EmptyState, PageHeader } from "@/components/ui";
 import { WorkOrderList } from "@/components/work-order-list";
 import { db } from "@/db";
 import { workOrders } from "@/db/schema";
-import { isAdmin, isManager, requireProfile } from "@/lib/auth";
+import { canAssign, isManager, requireProfile } from "@/lib/auth";
 import { today } from "@/lib/dates";
 import { listWorkOrders, overdueCondition } from "@/lib/queries";
 
@@ -64,7 +64,7 @@ export default async function DashboardPage() {
   }
 
   const [needsClosure, unassigned] = await Promise.all([
-    isAdmin(me.role) ? listWorkOrders(me, { status: "completed" }, 10) : Promise.resolve([]),
+    canAssign(me.role) ? listWorkOrders(me, { status: "completed" }, 10) : Promise.resolve([]),
     listWorkOrders(me, { status: "open" }, 10),
   ]);
 
@@ -87,16 +87,26 @@ export default async function DashboardPage() {
         <Stat label="Completed this month" value={closedThisMonth.n} icon={CheckCircle2} href="/reports" tone="bg-emerald-50 text-emerald-700" />
       </div>
 
-      {isAdmin(me.role) && (
-        <section className="mb-8">
+      {canAssign(me.role) && n("open") > 0 && (
+        <div className="mb-6">
+          <Alert tone="warning">
+            <strong>{n("open")}</strong> work order{n("open") === 1 ? " is" : "s are"} waiting to be assigned.{" "}
+            <Link href="/work-orders?status=open" className="font-medium underline">
+              Assign now
+            </Link>
+          </Alert>
+        </div>
+      )}
+      <section className="mb-8">
+        <h2 className="mb-3 font-semibold text-slate-900">{canAssign(me.role) ? "Waiting to be assigned" : "Unassigned"}</h2>
+        {unassigned.length ? <WorkOrderList rows={unassigned} /> : <EmptyState title="Every work order has someone on it" />}
+      </section>
+      {canAssign(me.role) && (
+        <section>
           <h2 className="mb-3 font-semibold text-slate-900">Awaiting your review</h2>
           {needsClosure.length ? <WorkOrderList rows={needsClosure} /> : <EmptyState title="Nothing to review">Completed work will appear here for closing.</EmptyState>}
         </section>
       )}
-      <section>
-        <h2 className="mb-3 font-semibold text-slate-900">Unassigned</h2>
-        {unassigned.length ? <WorkOrderList rows={unassigned} /> : <EmptyState title="Every work order has someone on it" />}
-      </section>
     </>
   );
 }

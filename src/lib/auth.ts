@@ -1,14 +1,17 @@
 import "server-only";
 import { auth, currentUser } from "@clerk/nextjs/server";
-import { and, eq, ne } from "drizzle-orm";
+import { and, eq, inArray, ne } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import { cache } from "react";
 import { db } from "@/db";
 import { profiles, type Profile } from "@/db/schema";
-import type { Role } from "./constants";
+import { ASSIGNER_ROLES, USER_ADMIN_ROLES, WORK_ROLES, type Role } from "./constants";
 
-export const isManager = (role: Role) => role === "admin" || role === "supervisor";
-export const isAdmin = (role: Role) => role === "admin";
+/** Sees all work orders and can raise them. */
+export const isManager = (role: Role) => WORK_ROLES.includes(role);
+/** Assigns, closes, reopens and deletes work (the maintenance manager). */
+export const canAssign = (role: Role) => ASSIGNER_ROLES.includes(role);
+export const canManageUsers = (role: Role) => USER_ADMIN_ROLES.includes(role);
 
 function displayName(user: NonNullable<Awaited<ReturnType<typeof currentUser>>>) {
   return user.fullName?.trim() || user.username || user.primaryEmailAddress?.emailAddress || "User";
@@ -32,7 +35,7 @@ export const getProfile = cache(async (): Promise<Profile | null> => {
   const [anyAdmin] = await db
     .select({ id: profiles.id })
     .from(profiles)
-    .where(and(eq(profiles.role, "admin"), eq(profiles.active, true), ne(profiles.id, userId)))
+    .where(and(inArray(profiles.role, USER_ADMIN_ROLES), eq(profiles.active, true), ne(profiles.id, userId)))
     .limit(1);
 
   const [created] = await db

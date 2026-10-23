@@ -6,8 +6,8 @@ import { redirect } from "next/navigation";
 import { after } from "next/server";
 import { db } from "@/db";
 import { profiles, workOrderEvents, workOrders, type Profile, type WorkOrder } from "@/db/schema";
-import { isAdmin, isManager, requireProfile } from "@/lib/auth";
-import { BUILDINGS, PRIORITIES, WORK_TYPES } from "@/lib/constants";
+import { canAssign, isManager, requireProfile } from "@/lib/auth";
+import { ASSIGNABLE_ROLES, ASSIGNER_ROLES, BUILDINGS, PRIORITIES, WORK_ROLES, WORK_TYPES } from "@/lib/constants";
 import { today } from "@/lib/dates";
 import { type ActionState, oneOf, optDate, optStr, str } from "@/lib/forms";
 import { notifyWorkOrder } from "@/lib/notify";
@@ -24,7 +24,7 @@ async function validAssignee(id: string | null): Promise<string | null> {
   const [p] = await db
     .select({ id: profiles.id })
     .from(profiles)
-    .where(and(eq(profiles.id, id), eq(profiles.active, true), inArray(profiles.role, ["admin", "supervisor", "staff"])));
+    .where(and(eq(profiles.id, id), eq(profiles.active, true), inArray(profiles.role, ASSIGNABLE_ROLES)));
   return p?.id ?? null;
 }
 
@@ -32,7 +32,12 @@ async function logEvent(workOrderId: number, actor: Profile, type: typeof workOr
   await db.insert(workOrderEvents).values({ workOrderId, actorId: actor.id, type, note: note || null });
 }
 
+/** The assignee does the work; the maintenance manager can also update it on their behalf. */
 function canWork(profile: Profile, wo: WorkOrder) {
+  return canAssign(profile.role) || wo.assignedToId === profile.id;
+}
+
+function canView(profile: Profile, wo: WorkOrder) {
   return isManager(profile.role) || wo.assignedToId === profile.id;
 }
 
@@ -55,7 +60,7 @@ function readDetails(formData: FormData) {
 }
 
 export async function createWorkOrder(_: ActionState, formData: FormData): Promise<ActionState> {
-  const me = await requireProfile(["admin", "supervisor"]);
+  const me = await requireProfile(WORK_ROLES);
   const details = readDetails(formData);
   if (!details.reportedBy) return { error: "Enter who reported the issue." };
   if (!details.description) return { error: "Enter a work description." };
@@ -64,12 +69,13 @@ export async function createWorkOrder(_: ActionState, formData: FormData): Promi
   const photoError = validatePhotos(files);
   if (photoError) return { error: photoError };
 
-  const assignedToId = await validAssignee(optStr(formData, "assignedToId"));
+  const assignedToId = canAssign(me.role) ? await validAssignee(optStr(formData, "assignedToId")) : null;
   const now = new Date();
   const [wo] = await db
     .insert(workOrders)
     .values({
       ...details,
+      dueDate: canAssign(me.role) ? details.dueDate : null,
       status: assignedToId ? "assigned" : "open",
       assignedToId,
       assignedAt: assignedToId ? now : null,
@@ -81,6 +87,8 @@ export async function createWorkOrder(_: ActionState, formData: FormData): Promi
   if (assignedToId) {
     await logEvent(wo.id, me, "assigned");
     after(() => notifyWorkOrder(wo.id, "assigned"));
+  } else {
+    after(() => notifyWorkOrder(wo.id, "created"));
   }
   await savePhotos(wo.id, "report", files, me.id);
 
@@ -89,20 +97,25 @@ export async function createWorkOrder(_: ActionState, formData: FormData): Promi
 }
 
 export async function updateWorkOrder(id: number, _: ActionState, formData: FormData): Promise<ActionState> {
-  const me = await requireProfile(["admin", "supervisor"]);
+  const me = await requireProfile(WORK_ROLES);
   const wo = await loadWorkOrder(id);
   const details = readDetails(formData);
   if (!details.reportedBy) return { error: "Enter who reported the issue." };
   if (!details.description) return { error: "Enter a work description." };
 
-  await db.update(workOrders).set({ ...details, updatedAt: new Date() }).where(eq(workOrders.id, wo.id));
+  // Only the maintenance manager sets due dates, as part of assigning the work.
+  const { dueDate, ...rest } = details;
+  await db
+    .update(workOrders)
+    .set({ ...rest, ...(canAssign(me.role) ? { dueDate } : {}), updatedAt: new Date() })
+    .where(eq(workOrders.id, wo.id));
   await logEvent(wo.id, me, "updated");
   refresh(wo.id);
   redirect(`/work-orders/${wo.id}`);
 }
 
 export async function assignWorkOrder(id: number, _: ActionState, formData: FormData): Promise<ActionState> {
-  const me = await requireProfile(["admin", "supervisor"]);
+  const me = await requireProfile(ASSIGNER_ROLES);
   const wo = await loadWorkOrder(id);
   if (wo.status === "completed" || wo.status === "closed") {
     return { error: "Reopen the work order before reassigning it." };
@@ -159,7 +172,7 @@ export async function completeWorkOrder(id: number, _: ActionState, formData: Fo
 }
 
 export async function closeWorkOrder(id: number, _: ActionState, formData: FormData): Promise<ActionState> {
-  const me = await requireProfile(["admin"]);
+  const me = await requireProfile(ASSIGNER_ROLES);
   const wo = await loadWorkOrder(id);
   if (wo.status !== "completed") return { error: "Only completed work orders can be closed." };
   const note = optStr(formData, "note");
@@ -171,7 +184,7 @@ export async function closeWorkOrder(id: number, _: ActionState, formData: FormD
 }
 
 export async function reopenWorkOrder(id: number, _: ActionState, formData: FormData): Promise<ActionState> {
-  const me = await requireProfile(["admin"]);
+  const me = await requireProfile(ASSIGNER_ROLES);
   const wo = await loadWorkOrder(id);
   if (wo.status !== "completed" && wo.status !== "closed") return { error: "Only completed or closed work orders can be reopened." };
   const note = optStr(formData, "note");
@@ -197,7 +210,7 @@ export async function reopenWorkOrder(id: number, _: ActionState, formData: Form
 export async function addComment(id: number, _: ActionState, formData: FormData): Promise<ActionState> {
   const me = await requireProfile();
   const wo = await loadWorkOrder(id);
-  if (!canWork(me, wo)) return { error: "You can't comment on this work order." };
+  if (!canView(me, wo)) return { error: "You can't comment on this work order." };
   const note = optStr(formData, "note");
   if (!note) return { error: "Write a comment first." };
   await logEvent(wo.id, me, "comment", note);
@@ -206,8 +219,8 @@ export async function addComment(id: number, _: ActionState, formData: FormData)
 }
 
 export async function deleteWorkOrder(id: number): Promise<void> {
-  const me = await requireProfile(["admin"]);
-  if (!isAdmin(me.role)) return;
+  const me = await requireProfile(ASSIGNER_ROLES);
+  if (!canAssign(me.role)) return;
   await db.delete(workOrders).where(eq(workOrders.id, id));
   refresh();
   redirect("/work-orders");

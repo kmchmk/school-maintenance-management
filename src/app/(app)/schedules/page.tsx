@@ -6,6 +6,7 @@ import { ButtonLink, Card, cn, EmptyState, PageHeader } from "@/components/ui";
 import { db } from "@/db";
 import { profiles, schedules } from "@/db/schema";
 import { requireProfile } from "@/lib/auth";
+import { ASSIGNER_ROLES } from "@/lib/constants";
 import { BUILDING_LABELS, FREQUENCY_LABELS, WORK_TYPE_LABELS } from "@/lib/constants";
 import { formatDate, today } from "@/lib/dates";
 import { runSchedulesNow } from "./actions";
@@ -13,7 +14,7 @@ import { runSchedulesNow } from "./actions";
 export const metadata = { title: "Preventive maintenance" };
 
 export default async function SchedulesPage() {
-  await requireProfile(["admin", "supervisor"]);
+  await requireProfile(ASSIGNER_ROLES);
   const rows = await db
     .select({ s: schedules, assigneeName: profiles.fullName })
     .from(schedules)

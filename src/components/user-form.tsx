@@ -67,10 +67,20 @@ export function UserForm({
             <span className="text-sm text-slate-800">Active (can sign in)</span>
           </label>
         )}
-        <div className="rounded-lg bg-slate-50 p-3 text-xs text-slate-600 sm:col-span-2">
-          <strong>Admin</strong>: everything, including closing work orders and managing users. <strong>Supervisor</strong>: create, assign and
-          track all work, preventive schedules and reports; can also be assigned work. <strong>Technician / Staff</strong>: sees and completes
-          work assigned to them.
+        <div className="space-y-1 rounded-lg bg-slate-50 p-3 text-xs text-slate-600 sm:col-span-2">
+          <p>
+            <strong>Maintenance manager</strong>: assigns technicians and drivers to work, closes or reopens it, runs preventive
+            schedules and manages users.
+          </p>
+          <p>
+            <strong>Admin</strong>: school leadership. Raises and tracks work orders, sees the board and reports, and manages users.
+          </p>
+          <p>
+            <strong>Supervisor</strong>: raises and tracks work orders and can be assigned work.
+          </p>
+          <p>
+            <strong>Technician / Driver</strong>: sees and completes work assigned to them.
+          </p>
         </div>
       </Card>
       <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">

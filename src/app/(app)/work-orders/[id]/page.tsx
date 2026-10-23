@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import { ActionForm, ConfirmButton, SubmitButton } from "@/components/form-controls";
 import { PhotoInput } from "@/components/photo-input";
 import { Alert, btn, ButtonLink, Card, cn, Field, inputClass, PriorityText, StatusBadge } from "@/components/ui";
-import { isAdmin, isManager, requireProfile } from "@/lib/auth";
+import { canAssign, isManager, requireProfile } from "@/lib/auth";
 import { BUILDING_LABELS, WORK_TYPE_LABELS } from "@/lib/constants";
 import { formatDate, formatDateTime, today, workOrderRef } from "@/lib/dates";
 import { getWorkOrderDetail, listAssignees } from "@/lib/queries";
@@ -60,10 +60,11 @@ export default async function WorkOrderPage({
 
   const { created, done } = await searchParams;
   const doneMessage = DONE_MESSAGES[created ? "created" : (done ?? "")];
-  const canWork = manager || isAssignee;
+  const assigner = canAssign(me.role);
+  const canWork = assigner || isAssignee;
   const workable = wo.status === "assigned" || wo.status === "in_progress";
   const overdue = !!wo.dueDate && wo.dueDate < today() && ["open", "assigned", "in_progress"].includes(wo.status);
-  const assignees = manager && wo.status !== "completed" && wo.status !== "closed" ? await listAssignees() : [];
+  const assignees = assigner && wo.status !== "completed" && wo.status !== "closed" ? await listAssignees() : [];
   const reportPhotos = detail.photos.filter((p) => p.kind === "report");
   const completionPhotos = detail.photos.filter((p) => p.kind === "completion");
 
@@ -170,7 +171,7 @@ export default async function WorkOrderPage({
             </Card>
           )}
 
-          {isAdmin(me.role) && wo.status === "completed" && (
+          {assigner && wo.status === "completed" && (
             <Card className="p-4 sm:p-6">
               <h2 className="font-semibold text-slate-900">Review and close</h2>
               <p className="mt-1 text-sm text-slate-600">Check the proof photos, then close the work order or send it back.</p>
@@ -186,7 +187,7 @@ export default async function WorkOrderPage({
             </Card>
           )}
 
-          {isAdmin(me.role) && wo.status === "closed" && (
+          {assigner && wo.status === "closed" && (
             <Card className="p-4 sm:p-6">
               <ReopenForm id={wo.id} />
             </Card>
@@ -238,7 +239,7 @@ export default async function WorkOrderPage({
             </Card>
           )}
 
-          {isAdmin(me.role) && (
+          {assigner && (
             <form action={deleteWorkOrder.bind(null, wo.id)}>
               <ConfirmButton message={`Delete ${workOrderRef(wo.id)} permanently? This cannot be undone.`} className={cn(btn.base, btn.ghost, "w-full text-red-600 hover:bg-red-50")}>
                 <Trash2 className="size-4" /> Delete work order

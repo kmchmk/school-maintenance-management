@@ -21,12 +21,14 @@ export function WorkOrderForm({
   defaults,
   todayDate,
   cancelHref,
+  canAssign,
 }: {
   action: (state: ActionState, formData: FormData) => Promise<ActionState>;
   assignees: Assignee[];
   defaults?: WorkOrder;
   todayDate: string;
   cancelHref: string;
+  canAssign: boolean;
 }) {
   const editing = !!defaults;
   return (
@@ -77,6 +79,7 @@ export function WorkOrderForm({
         </div>
       </Card>
 
+      {canAssign ? (
       <Card className="p-4 sm:p-6">
         <h2 className="mb-4 font-semibold text-slate-900">Assignment</h2>
         <div className="grid gap-4 sm:grid-cols-2">
@@ -98,6 +101,13 @@ export function WorkOrderForm({
           </Field>
         </div>
       </Card>
+      ) : (
+        !editing && (
+          <p className="rounded-lg bg-blue-50 px-4 py-3 text-sm text-blue-800">
+            The maintenance manager will be notified and will assign someone to this work order.
+          </p>
+        )
+      )}
 
       <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
         <ButtonLink href={cancelHref} variant="secondary">Cancel</ButtonLink>

@@ -6,15 +6,16 @@ import { Alert, ButtonLink, Card, cn, inputClass, PageHeader } from "@/component
 import { db } from "@/db";
 import { profiles } from "@/db/schema";
 import { requireProfile } from "@/lib/auth";
+import { USER_ADMIN_ROLES } from "@/lib/constants";
 import { ROLE_LABELS, ROLES } from "@/lib/constants";
 import { approveUser } from "./actions";
 
 export const metadata = { title: "Users" };
 
-const ROLE_ORDER = { admin: 0, supervisor: 1, staff: 2, pending: 3 } as const;
+const ROLE_ORDER = { manager: 0, admin: 1, supervisor: 2, staff: 3, pending: 4 } as const;
 
 export default async function UsersPage({ searchParams }: { searchParams: Promise<{ created?: string }> }) {
-  await requireProfile(["admin"]);
+  await requireProfile(USER_ADMIN_ROLES);
   const { created } = await searchParams;
   const all = (await db.select().from(profiles).orderBy(asc(profiles.fullName))).sort(
     (a, b) => Number(!a.active) - Number(!b.active) || ROLE_ORDER[a.role] - ROLE_ORDER[b.role],

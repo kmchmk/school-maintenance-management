@@ -9,7 +9,7 @@ import { db } from "@/db";
 import { profiles } from "@/db/schema";
 import { requireProfile } from "@/lib/auth";
 import { getSignInSettings } from "@/lib/clerk-settings";
-import { ROLES } from "@/lib/constants";
+import { ROLES, USER_ADMIN_ROLES } from "@/lib/constants";
 import { type ActionState, oneOf, optStr, str } from "@/lib/forms";
 
 function clerkError(err: unknown): string {
@@ -28,7 +28,7 @@ function clerkError(err: unknown): string {
 const validEmail = (v: string | null) => !v || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
 
 export async function createUser(_: ActionState, formData: FormData): Promise<ActionState> {
-  await requireProfile(["admin"]);
+  await requireProfile(USER_ADMIN_ROLES);
   const settings = await getSignInSettings();
   const fullName = str(formData, "fullName");
   const username = settings.username ? str(formData, "username").toLowerCase() : null;
@@ -66,14 +66,14 @@ export async function createUser(_: ActionState, formData: FormData): Promise<Ac
 }
 
 export async function updateUser(id: string, _: ActionState, formData: FormData): Promise<ActionState> {
-  const me = await requireProfile(["admin"]);
+  const me = await requireProfile(USER_ADMIN_ROLES);
   const fullName = str(formData, "fullName");
   const email = optStr(formData, "email");
   const role = oneOf(formData, "role", ROLES);
   const active = formData.get("active") === "on";
   if (!fullName) return { error: "Enter the person's name." };
   if (!validEmail(email)) return { error: "Enter a valid email address or leave it empty." };
-  if (id === me.id && (role !== "admin" || !active)) return { error: "You can't remove your own admin access." };
+  if (id === me.id && (!USER_ADMIN_ROLES.includes(role) || !active)) return { error: "You can't remove your own admin access." };
 
   const [current] = await db.select().from(profiles).where(eq(profiles.id, id));
   if (!current) return { error: "User not found." };
@@ -98,7 +98,7 @@ export async function updateUser(id: string, _: ActionState, formData: FormData)
 }
 
 export async function resetPassword(id: string, _: ActionState, formData: FormData): Promise<ActionState> {
-  await requireProfile(["admin"]);
+  await requireProfile(USER_ADMIN_ROLES);
   const password = str(formData, "password");
   if (password.length < 8) return { error: "Password must be at least 8 characters." };
   try {
@@ -111,7 +111,7 @@ export async function resetPassword(id: string, _: ActionState, formData: FormDa
 }
 
 export async function approveUser(id: string, formData: FormData): Promise<void> {
-  await requireProfile(["admin"]);
+  await requireProfile(USER_ADMIN_ROLES);
   const role = oneOf(formData, "role", ROLES.filter((r) => r !== "pending"));
   await db.update(profiles).set({ role, updatedAt: new Date() }).where(eq(profiles.id, id));
   revalidatePath("/users");

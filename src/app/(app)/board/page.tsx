@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Card, cn, EmptyState, PageHeader, PriorityText, StatusBadge } from "@/components/ui";
 import { requireProfile } from "@/lib/auth";
+import { WORK_ROLES } from "@/lib/constants";
 import { BUILDING_LABELS, WORK_TYPE_LABELS } from "@/lib/constants";
 import { formatDate, today, workOrderRef } from "@/lib/dates";
 import { listWorkOrders, type WorkOrderRow } from "@/lib/queries";
@@ -11,7 +12,7 @@ type Section = { key: string; name: string; title: string | null; rows: WorkOrde
 
 /** All work that isn't closed yet, grouped into one table per person. Closed work drops off automatically. */
 export default async function BoardPage() {
-  const me = await requireProfile(["admin", "supervisor"]);
+  const me = await requireProfile(WORK_ROLES);
   const rows = await listWorkOrders(me, { status: "active" }, 1000);
   const now = today();
 

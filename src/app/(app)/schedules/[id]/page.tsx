@@ -7,6 +7,7 @@ import { ScheduleForm } from "@/components/schedule-form";
 import { db } from "@/db";
 import { schedules } from "@/db/schema";
 import { requireProfile } from "@/lib/auth";
+import { ASSIGNER_ROLES } from "@/lib/constants";
 import { today } from "@/lib/dates";
 import { listAssignees } from "@/lib/queries";
 import { deleteSchedule, updateSchedule } from "../actions";
@@ -14,7 +15,7 @@ import { deleteSchedule, updateSchedule } from "../actions";
 export const metadata = { title: "Edit schedule" };
 
 export default async function EditSchedulePage({ params }: { params: Promise<{ id: string }> }) {
-  await requireProfile(["admin", "supervisor"]);
+  await requireProfile(ASSIGNER_ROLES);
   const id = Number((await params).id);
   const [schedule] = Number.isInteger(id) ? await db.select().from(schedules).where(eq(schedules.id, id)) : [];
   if (!schedule) notFound();

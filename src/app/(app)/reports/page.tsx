@@ -1,6 +1,7 @@
 import { Download } from "lucide-react";
 import { btn, Card, cn, inputClass, PageHeader } from "@/components/ui";
 import { requireProfile } from "@/lib/auth";
+import { WORK_ROLES } from "@/lib/constants";
 import { BUILDING_LABELS, WORK_TYPE_LABELS } from "@/lib/constants";
 import { formatDate, formatHours } from "@/lib/dates";
 import { parseRange, reportRows, summarize } from "@/lib/reports";
@@ -35,7 +36,7 @@ function Bars({ title, items, labels }: { title: string; items: { key: string; t
 }
 
 export default async function ReportsPage({ searchParams }: { searchParams: Promise<{ from?: string; to?: string }> }) {
-  await requireProfile(["admin", "supervisor"]);
+  await requireProfile(WORK_ROLES);
   const range = parseRange(await searchParams);
   const s = summarize(await reportRows(range.from, range.to));
 

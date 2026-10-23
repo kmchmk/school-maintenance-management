@@ -8,6 +8,7 @@ import {
   House,
   Menu,
   Plus,
+  UserCog,
   Users,
   X,
   type LucideIcon,
@@ -15,7 +16,7 @@ import {
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-import type { Role } from "@/lib/constants";
+import { ASSIGNER_ROLES, USER_ADMIN_ROLES, WORK_ROLES, type Role } from "@/lib/constants";
 import { cn } from "./ui";
 
 type Item = { href: string; label: string; icon: LucideIcon; roles?: Role[] };
@@ -23,11 +24,12 @@ type Item = { href: string; label: string; icon: LucideIcon; roles?: Role[] };
 const ITEMS: Item[] = [
   { href: "/dashboard", label: "Home", icon: House },
   { href: "/work-orders", label: "Work orders", icon: ClipboardList },
-  { href: "/work-orders/new", label: "New", icon: Plus, roles: ["admin", "supervisor"] },
-  { href: "/board", label: "Board", icon: LayoutList, roles: ["admin", "supervisor"] },
-  { href: "/reports", label: "Reports", icon: BarChart3, roles: ["admin", "supervisor"] },
-  { href: "/schedules", label: "Preventive", icon: CalendarClock, roles: ["admin", "supervisor"] },
-  { href: "/users", label: "Users", icon: Users, roles: ["admin"] },
+  { href: "/work-orders/new", label: "New", icon: Plus, roles: WORK_ROLES },
+  { href: "/board", label: "Board", icon: LayoutList, roles: WORK_ROLES },
+  { href: "/reports", label: "Reports", icon: BarChart3, roles: WORK_ROLES },
+  { href: "/schedules", label: "Preventive", icon: CalendarClock, roles: ASSIGNER_ROLES },
+  { href: "/users", label: "Users", icon: Users, roles: USER_ADMIN_ROLES },
+  { href: "/account", label: "My account", icon: UserCog },
 ];
 
 function isActive(pathname: string, href: string) {
