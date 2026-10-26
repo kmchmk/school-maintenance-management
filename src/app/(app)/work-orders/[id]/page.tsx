@@ -158,8 +158,8 @@ export default async function WorkOrderPage({
             <Card className="p-4 sm:p-6">
               <h2 className="font-semibold text-slate-900">Complete this work order</h2>
               <ActionForm action={completeWorkOrder.bind(null, wo.id)} className="mt-4 space-y-4">
-                <Field label="Proof photos" htmlFor="photos-picker" required>
-                  <PhotoInput label="Take / add photo" required />
+                <Field label="Photos (optional)" htmlFor="photos-picker">
+                  <PhotoInput label="Take / add photo" />
                 </Field>
                 <Field label="What was done?" htmlFor="notes">
                   <textarea id="notes" name="notes" rows={3} placeholder="e.g. Replaced the faulty breaker and tested the sockets." className={inputClass} />
@@ -174,7 +174,7 @@ export default async function WorkOrderPage({
           {assigner && wo.status === "completed" && (
             <Card className="p-4 sm:p-6">
               <h2 className="font-semibold text-slate-900">Review and close</h2>
-              <p className="mt-1 text-sm text-slate-600">Check the proof photos, then close the work order or send it back.</p>
+              <p className="mt-1 text-sm text-slate-600">Check the work (and any photos), then close the work order or send it back.</p>
               <div className="mt-4 grid gap-4 md:grid-cols-2">
                 <ActionForm action={closeWorkOrder.bind(null, wo.id)} className="space-y-3">
                   <Field label="Closing note (optional)" htmlFor="close-note">

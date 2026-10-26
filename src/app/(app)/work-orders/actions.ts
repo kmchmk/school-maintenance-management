@@ -153,8 +153,8 @@ export async function completeWorkOrder(id: number, _: ActionState, formData: Fo
   if (!canWork(me, wo)) return { error: "Only the assigned person can complete this work order." };
   if (wo.status !== "assigned" && wo.status !== "in_progress") return { error: "This work order is not open for completion." };
 
+  // Photos are optional proof of the completed work.
   const files = photoFiles(formData);
-  if (files.length === 0) return { error: "Add at least one photo as proof of the completed work." };
   const photoError = validatePhotos(files);
   if (photoError) return { error: photoError };
 

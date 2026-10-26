@@ -25,7 +25,7 @@ const ITEMS: Item[] = [
   { href: "/dashboard", label: "Home", icon: House },
   { href: "/work-orders", label: "Work orders", icon: ClipboardList },
   { href: "/work-orders/new", label: "New", icon: Plus, roles: CREATOR_ROLES },
-  { href: "/board", label: "Board", icon: LayoutList, roles: WORK_ROLES },
+  { href: "/board", label: "Board", icon: LayoutList },
   { href: "/reports", label: "Reports", icon: BarChart3, roles: WORK_ROLES },
   { href: "/schedules", label: "Preventive", icon: CalendarClock, roles: ASSIGNER_ROLES },
   { href: "/users", label: "Users", icon: Users, roles: USER_ADMIN_ROLES },

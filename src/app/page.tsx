@@ -10,7 +10,7 @@ export default async function Home() {
 
   const features = [
     { icon: ClipboardCheck, title: "Work orders", text: "Record issues, assign them to the right technician and track them to closure." },
-    { icon: Camera, title: "Photo proof", text: "Technicians attach photos when a job is done, straight from their phone." },
+    { icon: Camera, title: "Photo proof", text: "Technicians can attach photos when a job is done, straight from their phone." },
     { icon: CalendarClock, title: "Preventive maintenance", text: "Recurring checks are created automatically on schedule." },
   ];
 

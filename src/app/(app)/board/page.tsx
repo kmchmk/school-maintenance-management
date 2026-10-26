@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { Card, cn, EmptyState, PageHeader, PriorityText, StatusBadge } from "@/components/ui";
-import { requireProfile } from "@/lib/auth";
-import { WORK_ROLES } from "@/lib/constants";
+import { isManager, requireProfile } from "@/lib/auth";
 import { BUILDING_LABELS, WORK_TYPE_LABELS } from "@/lib/constants";
 import { formatDate, today, workOrderRef } from "@/lib/dates";
 import { listWorkOrders, type WorkOrderRow } from "@/lib/queries";
@@ -10,10 +9,14 @@ export const metadata = { title: "Board" };
 
 type Section = { key: string; name: string; title: string | null; rows: WorkOrderRow[] };
 
-/** All work that isn't closed yet, grouped into one table per person. Closed work drops off automatically. */
+/**
+ * All work that isn't closed yet, grouped into one table per person. Closed work drops off automatically.
+ * Everyone can see it; technicians and drivers can only open their own work orders from here.
+ */
 export default async function BoardPage() {
-  const me = await requireProfile(WORK_ROLES);
-  const rows = await listWorkOrders(me, { status: "active" }, 1000);
+  const me = await requireProfile();
+  const rows = await listWorkOrders(me, { status: "active" }, 1000, true);
+  const canOpen = (wo: WorkOrderRow) => isManager(me.role) || wo.assignedToId === me.id;
   const now = today();
 
   const sections = new Map<string, Section>();
@@ -32,7 +35,7 @@ export default async function BoardPage() {
     <>
       <PageHeader
         title="Board"
-        description={`${rows.length} open work order${rows.length === 1 ? "" : "s"}, grouped by person. Closed work orders drop off automatically and stay in Reports.`}
+        description={`${rows.length} open work order${rows.length === 1 ? "" : "s"}, grouped by person. Closed work orders drop off automatically${isManager(me.role) ? " and stay in Reports" : ""}.`}
       />
       {ordered.length === 0 ? (
         <EmptyState title="Nothing open">Every work order is closed.</EmptyState>
@@ -57,7 +60,7 @@ export default async function BoardPage() {
                     const late = !!wo.dueDate && wo.dueDate < now && wo.status !== "completed";
                     return (
                       <li key={wo.id}>
-                        <Link href={`/work-orders/${wo.id}`} className="block px-4 py-3 active:bg-slate-50">
+                        <MaybeLink href={canOpen(wo) ? `/work-orders/${wo.id}` : null} className="block px-4 py-3 active:bg-slate-50">
                           <div className="flex items-center justify-between gap-2">
                             <span className="text-xs font-semibold text-slate-500">
                               {workOrderRef(wo.id)} · {WORK_TYPE_LABELS[wo.type]}
@@ -78,7 +81,7 @@ export default async function BoardPage() {
                               {wo.dueDate ? `Due ${formatDate(wo.dueDate)}` : formatDate(wo.reportedDate)}
                             </span>
                           </p>
-                        </Link>
+                        </MaybeLink>
                       </li>
                     );
                   })}
@@ -101,11 +104,15 @@ export default async function BoardPage() {
                       {s.rows.map((wo) => {
                         const late = !!wo.dueDate && wo.dueDate < now && wo.status !== "completed";
                         return (
-                          <tr key={wo.id} className="relative hover:bg-slate-50">
+                          <tr key={wo.id} className={cn("relative", canOpen(wo) && "hover:bg-slate-50")}>
                             <td className="whitespace-nowrap px-4 py-2.5 font-medium text-slate-500">
-                              <Link href={`/work-orders/${wo.id}`} className="after:absolute after:inset-0">
-                                {workOrderRef(wo.id)}
-                              </Link>
+                              {canOpen(wo) ? (
+                                <Link href={`/work-orders/${wo.id}`} className="after:absolute after:inset-0">
+                                  {workOrderRef(wo.id)}
+                                </Link>
+                              ) : (
+                                workOrderRef(wo.id)
+                              )}
                             </td>
                             <td className="whitespace-nowrap px-4 py-2.5 text-slate-600">{formatDate(wo.reportedDate)}</td>
                             <td className="px-4 py-2.5 text-slate-600">{wo.reportedBy}</td>
@@ -142,5 +149,15 @@ export default async function BoardPage() {
         </div>
       )}
     </>
+  );
+}
+
+function MaybeLink({ href, className, children }: { href: string | null; className: string; children: React.ReactNode }) {
+  return href ? (
+    <Link href={href} className={className}>
+      {children}
+    </Link>
+  ) : (
+    <div className={className.replace("active:bg-slate-50", "")}>{children}</div>
   );
 }

@@ -32,10 +32,11 @@ export const OPEN_STATUSES: Status[] = ["open", "assigned", "in_progress"];
 export const overdueCondition = () =>
   and(inArray(workOrders.status, OPEN_STATUSES), lt(workOrders.dueDate, today()));
 
-export async function listWorkOrders(viewer: Profile, filters: WorkOrderFilters, limit = 100) {
+/** Technicians and drivers only see their own work, unless `everyone` is set (the read-only Board). */
+export async function listWorkOrders(viewer: Profile, filters: WorkOrderFilters, limit = 100, everyone = false) {
   const where: (SQL | undefined)[] = [];
 
-  if (!isManager(viewer.role)) where.push(eq(workOrders.assignedToId, viewer.id));
+  if (!everyone && !isManager(viewer.role)) where.push(eq(workOrders.assignedToId, viewer.id));
 
   const status = filters.status || "active";
   if (status === "active") where.push(ne(workOrders.status, "closed"));
