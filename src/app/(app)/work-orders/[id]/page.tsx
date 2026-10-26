@@ -157,6 +157,11 @@ export default async function WorkOrderPage({
           {canWork && workable && (
             <Card className="p-4 sm:p-6">
               <h2 className="font-semibold text-slate-900">Complete this work order</h2>
+              {!assigner && (
+                <p className="mt-1 text-sm text-slate-600">
+                  When the job is done, mark it as completed. The Maintenance Manager then checks it and closes it.
+                </p>
+              )}
               <ActionForm action={completeWorkOrder.bind(null, wo.id)} className="mt-4 space-y-4">
                 <Field label="Photos (optional)" htmlFor="photos-picker">
                   <PhotoInput label="Take / add photo" />
