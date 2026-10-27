@@ -22,10 +22,10 @@ export async function GET(request: Request) {
     "Ref", "Date reported", "Reported by", "Type", "Building", "Classroom", "Description", "Priority", "Status",
     "Assigned to", "Assigned at", "Started at", "Completed at", "Closed at", "Due date", "Reopened", "Preventive", "Completion notes",
   ];
-  const lines = rows.map(({ wo, assigneeName }) =>
+  const lines = rows.map(({ wo, assigneeName, helpers }) =>
     [
       workOrderRef(wo.id), wo.reportedDate, wo.reportedBy, WORK_TYPE_LABELS[wo.type], BUILDING_LABELS[wo.building], wo.classroom,
-      wo.description, PRIORITY_LABELS[wo.priority], STATUS_LABELS[wo.status], assigneeName, ts(wo.assignedAt), ts(wo.startedAt),
+      wo.description, PRIORITY_LABELS[wo.priority], STATUS_LABELS[wo.status], [assigneeName, ...helpers.map((h) => h.name)].filter(Boolean).join(", "), ts(wo.assignedAt), ts(wo.startedAt),
       ts(wo.completedAt), ts(wo.closedAt), wo.dueDate, wo.reopenCount, wo.scheduleId ? "Yes" : "No", wo.completionNotes,
     ]
       .map(cell)

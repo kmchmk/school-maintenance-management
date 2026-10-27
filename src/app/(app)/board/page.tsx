@@ -16,16 +16,26 @@ type Section = { key: string; name: string; title: string | null; rows: WorkOrde
 export default async function BoardPage() {
   const me = await requireProfile();
   const rows = await listWorkOrders(me, { status: "active" }, 1000, true);
-  const canOpen = (wo: WorkOrderRow) => isManager(me.role) || wo.assignedToId === me.id;
+  const onTeam = (wo: WorkOrderRow, id: string) => wo.assignedToId === id || wo.helpers.some((h) => h.id === id);
+  const canOpen = (wo: WorkOrderRow) => isManager(me.role) || onTeam(wo, me.id);
+  // Everyone else on the job, for the "with …" note under a row in this person's section.
+  const others = (wo: WorkOrderRow, sectionKey: string) =>
+    [
+      ...(wo.assignedToId && wo.assignedToId !== sectionKey ? [wo.assigneeName ?? ""] : []),
+      ...wo.helpers.filter((h) => h.id !== sectionKey).map((h) => h.name),
+    ].join(", ");
   const now = today();
 
   const sections = new Map<string, Section>();
-  for (const wo of rows) {
-    const key = wo.assignedToId ?? "unassigned";
-    if (!sections.has(key)) {
-      sections.set(key, { key, name: wo.assigneeName ?? "Unassigned", title: wo.assigneeName ? wo.assigneeTitle : null, rows: [] });
-    }
+  const add = (key: string, name: string, title: string | null, wo: WorkOrderRow) => {
+    if (!sections.has(key)) sections.set(key, { key, name, title, rows: [] });
     sections.get(key)!.rows.push(wo);
+  };
+  // A job with several people shows up in each person's section.
+  for (const wo of rows) {
+    if (wo.assignedToId) add(wo.assignedToId, wo.assigneeName ?? "Unknown", wo.assigneeTitle, wo);
+    else add("unassigned", "Unassigned", null, wo);
+    for (const h of wo.helpers) add(h.id, h.name, h.title, wo);
   }
   const ordered = [...sections.values()].sort((a, b) =>
     a.key === "unassigned" ? -1 : b.key === "unassigned" ? 1 : a.name.localeCompare(b.name),
@@ -81,6 +91,7 @@ export default async function BoardPage() {
                               {wo.dueDate ? `Due ${formatDate(wo.dueDate)}` : formatDate(wo.reportedDate)}
                             </span>
                           </p>
+                          {others(wo, s.key) && <p className="mt-1 text-xs text-slate-500">With {others(wo, s.key)}</p>}
                         </MaybeLink>
                       </li>
                     );
@@ -130,6 +141,7 @@ export default async function BoardPage() {
                             </td>
                             <td className="max-w-xs px-4 py-2.5">
                               <p className="line-clamp-2 text-slate-900">{wo.description}</p>
+                              {others(wo, s.key) && <p className="mt-0.5 text-xs text-slate-500">With {others(wo, s.key)}</p>}
                             </td>
                             <td className={cn("whitespace-nowrap px-4 py-2.5", late ? "font-semibold text-red-600" : "text-slate-600")}>
                               {formatDate(wo.dueDate)}

@@ -5,13 +5,14 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { after } from "next/server";
 import { db } from "@/db";
-import { profiles, workOrderEvents, workOrders, type Profile, type WorkOrder } from "@/db/schema";
+import { profiles, workOrderEvents, workOrderHelpers, workOrders, type Profile, type WorkOrder } from "@/db/schema";
 import { canAssign, isManager, requireProfile } from "@/lib/auth";
 import { ASSIGNABLE_ROLES, ASSIGNER_ROLES, BUILDINGS, CREATOR_ROLES, PRIORITIES, WORK_TYPES } from "@/lib/constants";
 import { today } from "@/lib/dates";
 import { type ActionState, oneOf, optDate, optStr, str } from "@/lib/forms";
 import { notifyWorkOrder } from "@/lib/notify";
 import { photoFiles, savePhotos, validatePhotos } from "@/lib/photos";
+import { isOnTeam } from "@/lib/queries";
 
 async function loadWorkOrder(id: number): Promise<WorkOrder> {
   const [wo] = await db.select().from(workOrders).where(eq(workOrders.id, id));
@@ -19,26 +20,44 @@ async function loadWorkOrder(id: number): Promise<WorkOrder> {
   return wo;
 }
 
-async function validAssignee(id: string | null): Promise<string | null> {
-  if (!id) return null;
-  const [p] = await db
-    .select({ id: profiles.id })
+/** Active, assignable people among these ids, with their names (in the order given). */
+async function validAssignees(ids: string[]) {
+  if (ids.length === 0) return [];
+  const rows = await db
+    .select({ id: profiles.id, name: profiles.fullName })
     .from(profiles)
-    .where(and(eq(profiles.id, id), eq(profiles.active, true), inArray(profiles.role, ASSIGNABLE_ROLES)));
-  return p?.id ?? null;
+    .where(and(inArray(profiles.id, ids), eq(profiles.active, true), inArray(profiles.role, ASSIGNABLE_ROLES)));
+  return ids.map((id) => rows.find((r) => r.id === id)).filter((r) => !!r);
 }
+
+/** The lead ("assignedToId") and any extra people ("helperIds") picked in a form. */
+async function readTeam(formData: FormData) {
+  const leadId = optStr(formData, "assignedToId");
+  const [lead] = leadId ? await validAssignees([leadId]) : [];
+  if (!lead) return null;
+  const helperIds = [...new Set(formData.getAll("helperIds").map(String))].filter((id) => id && id !== lead.id);
+  return { lead, helpers: await validAssignees(helperIds) };
+}
+
+async function setHelpers(workOrderId: number, helperIds: string[]) {
+  await db.delete(workOrderHelpers).where(eq(workOrderHelpers.workOrderId, workOrderId));
+  if (helperIds.length) await db.insert(workOrderHelpers).values(helperIds.map((profileId) => ({ workOrderId, profileId })));
+}
+
+const teamNote = (team: { lead: { name: string }; helpers: { name: string }[] }) =>
+  `Assigned to ${[team.lead.name, ...team.helpers.map((h) => h.name)].join(", ")}`;
 
 async function logEvent(workOrderId: number, actor: Profile, type: typeof workOrderEvents.$inferInsert.type, note?: string | null) {
   await db.insert(workOrderEvents).values({ workOrderId, actorId: actor.id, type, note: note || null });
 }
 
-/** The assignee does the work; the maintenance manager can also update it on their behalf. */
-function canWork(profile: Profile, wo: WorkOrder) {
-  return canAssign(profile.role) || wo.assignedToId === profile.id;
+/** The people on the job do the work; the maintenance manager can also update it on their behalf. */
+async function canWork(profile: Profile, wo: WorkOrder) {
+  return canAssign(profile.role) || (await isOnTeam(wo.id, wo.assignedToId, profile.id));
 }
 
-function canView(profile: Profile, wo: WorkOrder) {
-  return isManager(profile.role) || wo.assignedToId === profile.id;
+async function canView(profile: Profile, wo: WorkOrder) {
+  return isManager(profile.role) || (await isOnTeam(wo.id, wo.assignedToId, profile.id));
 }
 
 function refresh(id?: number) {
@@ -69,7 +88,8 @@ export async function createWorkOrder(_: ActionState, formData: FormData): Promi
   const photoError = validatePhotos(files);
   if (photoError) return { error: photoError };
 
-  const assignedToId = canAssign(me.role) ? await validAssignee(optStr(formData, "assignedToId")) : null;
+  const team = canAssign(me.role) ? await readTeam(formData) : null;
+  const assignedToId = team?.lead.id ?? null;
   const now = new Date();
   const [wo] = await db
     .insert(workOrders)
@@ -84,8 +104,9 @@ export async function createWorkOrder(_: ActionState, formData: FormData): Promi
     .returning({ id: workOrders.id });
 
   await logEvent(wo.id, me, "created");
-  if (assignedToId) {
-    await logEvent(wo.id, me, "assigned");
+  if (team) {
+    await setHelpers(wo.id, team.helpers.map((h) => h.id));
+    await logEvent(wo.id, me, "assigned", teamNote(team));
     after(() => notifyWorkOrder(wo.id, "assigned"));
   } else {
     after(() => notifyWorkOrder(wo.id, "created"));
@@ -120,19 +141,34 @@ export async function assignWorkOrder(id: number, _: ActionState, formData: Form
   if (wo.status === "completed" || wo.status === "closed") {
     return { error: "Reopen the work order before reassigning it." };
   }
-  const assignedToId = await validAssignee(optStr(formData, "assignedToId"));
-  if (!assignedToId) return { error: "Choose who should do the work." };
-  if (assignedToId === wo.assignedToId) return { ok: "Already assigned to this person." };
-
+  const team = await readTeam(formData);
+  if (!team) return { error: "Choose who should lead the work." };
+  const before = await db
+    .select({ id: workOrderHelpers.profileId })
+    .from(workOrderHelpers)
+    .where(eq(workOrderHelpers.workOrderId, wo.id));
+  const oldTeam = new Set([wo.assignedToId, ...before.map((b) => b.id)]);
+  const newTeam = [team.lead.id, ...team.helpers.map((h) => h.id)];
   const dueDate = optDate(formData, "dueDate") ?? wo.dueDate;
+  const leadChanged = team.lead.id !== wo.assignedToId;
+  const helpersChanged = before.length !== team.helpers.length || newTeam.some((id) => !oldTeam.has(id));
+  if (!leadChanged && !helpersChanged && dueDate === wo.dueDate) return { ok: "No changes." };
+
+  // A new lead starts the job afresh; adding or removing helpers keeps its progress.
   await db
     .update(workOrders)
-    .set({ assignedToId, assignedAt: new Date(), startedAt: null, status: "assigned", dueDate, updatedAt: new Date() })
+    .set({
+      assignedToId: team.lead.id,
+      dueDate,
+      updatedAt: new Date(),
+      ...(leadChanged ? { assignedAt: new Date(), startedAt: null, status: "assigned" as const } : {}),
+    })
     .where(eq(workOrders.id, wo.id));
+  await setHelpers(wo.id, team.helpers.map((h) => h.id));
 
-  const [assignee] = await db.select({ name: profiles.fullName }).from(profiles).where(eq(profiles.id, assignedToId));
-  await logEvent(wo.id, me, "assigned", `Assigned to ${assignee?.name ?? "user"}`);
-  after(() => notifyWorkOrder(wo.id, "assigned"));
+  await logEvent(wo.id, me, "assigned", teamNote(team));
+  const added = newTeam.filter((id) => !oldTeam.has(id));
+  if (added.length) after(() => notifyWorkOrder(wo.id, "assigned", null, added));
   refresh(wo.id);
   redirect(`/work-orders/${wo.id}?done=assigned`);
 }
@@ -140,7 +176,7 @@ export async function assignWorkOrder(id: number, _: ActionState, formData: Form
 export async function startWorkOrder(id: number): Promise<void> {
   const me = await requireProfile();
   const wo = await loadWorkOrder(id);
-  if (!canWork(me, wo) || wo.status !== "assigned") return;
+  if (!(await canWork(me, wo)) || wo.status !== "assigned") return;
   await db.update(workOrders).set({ status: "in_progress", startedAt: new Date(), updatedAt: new Date() }).where(eq(workOrders.id, wo.id));
   await logEvent(wo.id, me, "started");
   refresh(wo.id);
@@ -150,7 +186,7 @@ export async function startWorkOrder(id: number): Promise<void> {
 export async function completeWorkOrder(id: number, _: ActionState, formData: FormData): Promise<ActionState> {
   const me = await requireProfile();
   const wo = await loadWorkOrder(id);
-  if (!canWork(me, wo)) return { error: "Only the assigned person can complete this work order." };
+  if (!(await canWork(me, wo))) return { error: "Only the people assigned can complete this work order." };
   if (wo.status !== "assigned" && wo.status !== "in_progress") return { error: "This work order is not open for completion." };
 
   // Photos are optional proof of the completed work.
@@ -210,7 +246,7 @@ export async function reopenWorkOrder(id: number, _: ActionState, formData: Form
 export async function addComment(id: number, _: ActionState, formData: FormData): Promise<ActionState> {
   const me = await requireProfile();
   const wo = await loadWorkOrder(id);
-  if (!canView(me, wo)) return { error: "You can't comment on this work order." };
+  if (!(await canView(me, wo))) return { error: "You can't comment on this work order." };
   const note = optStr(formData, "note");
   if (!note) return { error: "Write a comment first." };
   await logEvent(wo.id, me, "comment", note);

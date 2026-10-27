@@ -10,7 +10,7 @@ Tailwind CSS · Vercel (hosting + daily cron)
 
 | Role | Who | Can do |
 | --- | --- | --- |
-| **Maintenance Manager** | Maintenance Manager | Raise work orders, assign them, close or reopen completed work, preventive schedules, board, reports, manage users. Can also be assigned work |
+| **Maintenance Manager** | Maintenance Manager | Raise work orders, assign them (one lead plus optional extra people), close or reopen completed work, preventive schedules, board, reports, manage users. Can also be assigned work |
 | **Admin** | Owner, MD, principal, heads of section | Raise and edit work orders, track all work, board and reports, manage users |
 | **Supervisor** | Maintenance supervisor | Track all work, board and reports (can't raise work orders). Can be assigned work |
 | **Technician / Driver** | Technicians, drivers | See work assigned to them, start it, complete it (photos optional), comment; see everyone's open work on the Board (read only) |

@@ -2,6 +2,7 @@ import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { workOrderPhotos, workOrders } from "@/db/schema";
 import { getProfile, isManager } from "@/lib/auth";
+import { isOnTeam } from "@/lib/queries";
 
 export async function GET(_: Request, { params }: { params: Promise<{ id: string }> }) {
   const profile = await getProfile();
@@ -11,11 +12,11 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
   if (!Number.isInteger(id)) return new Response("Not found", { status: 404 });
 
   const [photo] = await db
-    .select({ data: workOrderPhotos.data, contentType: workOrderPhotos.contentType, assignedToId: workOrders.assignedToId })
+    .select({ data: workOrderPhotos.data, contentType: workOrderPhotos.contentType, workOrderId: workOrders.id, assignedToId: workOrders.assignedToId })
     .from(workOrderPhotos)
     .innerJoin(workOrders, eq(workOrders.id, workOrderPhotos.workOrderId))
     .where(eq(workOrderPhotos.id, id));
-  if (!photo || (!isManager(profile.role) && photo.assignedToId !== profile.id)) {
+  if (!photo || (!isManager(profile.role) && !(await isOnTeam(photo.workOrderId, photo.assignedToId, profile.id)))) {
     return new Response("Not found", { status: 404 });
   }
 

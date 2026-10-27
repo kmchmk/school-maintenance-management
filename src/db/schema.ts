@@ -7,6 +7,7 @@ import {
   integer,
   pgEnum,
   pgTable,
+  primaryKey,
   serial,
   text,
   timestamp,
@@ -91,6 +92,21 @@ export const workOrders = pgTable(
     index("work_orders_assigned_to_idx").on(t.assignedToId),
     index("work_orders_reported_date_idx").on(t.reportedDate),
   ],
+);
+
+/** Extra people working on a job alongside the lead (work_orders.assigned_to_id). */
+export const workOrderHelpers = pgTable(
+  "work_order_helpers",
+  {
+    workOrderId: integer("work_order_id")
+      .notNull()
+      .references(() => workOrders.id, { onDelete: "cascade" }),
+    profileId: text("profile_id")
+      .notNull()
+      .references(() => profiles.id),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [primaryKey({ columns: [t.workOrderId, t.profileId] }), index("work_order_helpers_profile_idx").on(t.profileId)],
 );
 
 export const workOrderPhotos = pgTable(

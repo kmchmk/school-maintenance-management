@@ -2,11 +2,11 @@
 
 import { clerkClient } from "@clerk/nextjs/server";
 import { isClerkAPIResponseError } from "@clerk/nextjs/errors";
-import { and, count, eq, inArray, isNull, ne } from "drizzle-orm";
+import { and, asc, count, eq, inArray, isNull, ne } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { db } from "@/db";
-import { profiles, schedules, workOrderEvents, workOrders } from "@/db/schema";
+import { profiles, schedules, workOrderEvents, workOrderHelpers, workOrders } from "@/db/schema";
 import { requireProfile } from "@/lib/auth";
 import { getSignInSettings } from "@/lib/clerk-settings";
 import { ROLES, USER_ADMIN_ROLES } from "@/lib/constants";
@@ -148,6 +148,35 @@ export async function deleteUser(id: string): Promise<void> {
   }
 
   const now = new Date();
+  const openStatuses = ["open", "assigned", "in_progress"] as const;
+  // Drop them from shared jobs that are still open; finished jobs keep them for the record.
+  const openJobs = db.select({ id: workOrders.id }).from(workOrders).where(inArray(workOrders.status, [...openStatuses]));
+  await db.delete(workOrderHelpers).where(and(eq(workOrderHelpers.profileId, id), inArray(workOrderHelpers.workOrderId, openJobs)));
+
+  // Where they led an open shared job, the next person on it takes over.
+  const led = await db
+    .select({ id: workOrders.id })
+    .from(workOrders)
+    .where(and(eq(workOrders.assignedToId, id), inArray(workOrders.status, ["assigned", "in_progress"])));
+  for (const wo of led) {
+    const [next] = await db
+      .select({ id: workOrderHelpers.profileId, name: profiles.fullName })
+      .from(workOrderHelpers)
+      .innerJoin(profiles, eq(profiles.id, workOrderHelpers.profileId))
+      .where(eq(workOrderHelpers.workOrderId, wo.id))
+      .orderBy(asc(profiles.fullName))
+      .limit(1);
+    if (!next) continue;
+    await db.update(workOrders).set({ assignedToId: next.id, updatedAt: now }).where(eq(workOrders.id, wo.id));
+    await db.delete(workOrderHelpers).where(and(eq(workOrderHelpers.workOrderId, wo.id), eq(workOrderHelpers.profileId, next.id)));
+    await db.insert(workOrderEvents).values({
+      workOrderId: wo.id,
+      actorId: me.id,
+      type: "updated",
+      note: `${next.name} now leads this job: ${user.fullName}'s account was deleted.`,
+    });
+  }
+
   const unassigned = await db
     .update(workOrders)
     .set({ assignedToId: null, assignedAt: null, startedAt: null, status: "open", updatedAt: now })

@@ -38,7 +38,7 @@ export function WorkOrderList({ rows }: { rows: WorkOrderRow[] }) {
                 </span>
                 <span className="flex items-center gap-1">
                   <User className="size-3.5" />
-                  {wo.assigneeName ?? "Unassigned"}
+                  {team(wo) ?? "Unassigned"}
                 </span>
                 <span className={cn("flex items-center gap-1", isOverdue(wo) && "font-semibold text-red-600")}>
                   <CalendarDays className="size-3.5" />
@@ -86,7 +86,7 @@ export function WorkOrderList({ rows }: { rows: WorkOrderRow[] }) {
                   </p>
                 </td>
                 <td className="px-4 py-3 text-slate-600">{location(wo)}</td>
-                <td className="px-4 py-3 text-slate-600">{wo.assigneeName ?? <span className="text-slate-400">Unassigned</span>}</td>
+                <td className="px-4 py-3 text-slate-600">{team(wo) ?? <span className="text-slate-400">Unassigned</span>}</td>
                 <td className="whitespace-nowrap px-4 py-3 text-slate-600">{formatDate(wo.reportedDate)}</td>
                 <td className={cn("whitespace-nowrap px-4 py-3", isOverdue(wo) ? "font-semibold text-red-600" : "text-slate-600")}>
                   {formatDate(wo.dueDate)}
@@ -102,3 +102,5 @@ export function WorkOrderList({ rows }: { rows: WorkOrderRow[] }) {
     </>
   );
 }
+
+const team = (wo: WorkOrderRow) => (wo.assigneeName ? [wo.assigneeName, ...wo.helpers.map((h) => h.name)].join(", ") : null);

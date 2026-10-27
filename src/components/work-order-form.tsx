@@ -13,6 +13,7 @@ import type { ActionState } from "@/lib/forms";
 import type { Assignee } from "@/lib/queries";
 import { ActionForm, SubmitButton } from "./form-controls";
 import { PhotoInput } from "./photo-input";
+import { TeamFields } from "./team-fields";
 import { ButtonLink, Card, Field, inputClass } from "./ui";
 
 export function WorkOrderForm({
@@ -83,19 +84,7 @@ export function WorkOrderForm({
       <Card className="p-4 sm:p-6">
         <h2 className="mb-4 font-semibold text-slate-900">Assignment</h2>
         <div className="grid gap-4 sm:grid-cols-2">
-          {!editing && (
-            <Field label="Assign to" htmlFor="assignedToId" hint="Leave empty to assign later.">
-              <select id="assignedToId" name="assignedToId" defaultValue="" className={inputClass}>
-                <option value="">Not assigned yet</option>
-                {assignees.map((a) => (
-                  <option key={a.id} value={a.id}>
-                    {a.fullName}
-                    {a.jobTitle ? ` — ${a.jobTitle}` : ""}
-                  </option>
-                ))}
-              </select>
-            </Field>
-          )}
+          {!editing && <TeamFields assignees={assignees} idPrefix="new" />}
           <Field label="Due date" htmlFor="dueDate" hint="Used for on-time KPIs.">
             <input id="dueDate" name="dueDate" type="date" defaultValue={defaults?.dueDate ?? ""} min={editing ? undefined : todayDate} className={inputClass} />
           </Field>

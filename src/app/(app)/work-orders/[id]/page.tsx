@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ActionForm, ConfirmButton, SubmitButton } from "@/components/form-controls";
 import { PhotoInput } from "@/components/photo-input";
+import { TeamFields } from "@/components/team-fields";
 import { Alert, btn, ButtonLink, Card, cn, Field, inputClass, PriorityText, StatusBadge } from "@/components/ui";
 import { canAssign, canCreate, isManager, requireProfile } from "@/lib/auth";
 import { BUILDING_LABELS, WORK_TYPE_LABELS } from "@/lib/constants";
@@ -20,7 +21,7 @@ import {
 
 const DONE_MESSAGES: Record<string, string> = {
   created: "Work order created.",
-  assigned: "Assigned. It now shows on their dashboard.",
+  assigned: "Saved. The job now shows on their dashboard.",
   started: "Work started.",
   completed: "Marked as completed. The Maintenance Manager has been notified.",
   closed: "Work order closed.",
@@ -55,7 +56,7 @@ export default async function WorkOrderPage({
   if (!detail) notFound();
   const { wo } = detail;
   const manager = isManager(me.role);
-  const isAssignee = wo.assignedToId === me.id;
+  const isAssignee = wo.assignedToId === me.id || detail.helpers.some((h) => h.id === me.id);
   if (!manager && !isAssignee) notFound();
 
   const { created, done } = await searchParams;
@@ -76,6 +77,7 @@ export default async function WorkOrderPage({
     ["Reported by", wo.reportedBy],
     ["Date reported", formatDate(wo.reportedDate)],
     ["Assigned to", detail.assigneeName ?? "Not assigned"],
+    ...(detail.helpers.length ? ([["Also on this job", detail.helpers.map((h) => h.name).join(", ")]] as [string, string][]) : []),
     ["Due date", <span key="d" className={cn(overdue && "font-semibold text-red-600")}>{formatDate(wo.dueDate)}{overdue && " (overdue)"}</span>],
     ["Completed", formatDateTime(wo.completedAt)],
     ["Closed", wo.closedAt ? `${formatDateTime(wo.closedAt)}${detail.closerName ? ` by ${detail.closerName}` : ""}` : "—"],
@@ -223,23 +225,13 @@ export default async function WorkOrderPage({
         <div className="space-y-6 lg:col-start-3 lg:row-start-2">
           {assignees.length > 0 && (
             <Card className="p-4 sm:p-6">
-              <h2 className="font-semibold text-slate-900">{wo.assignedToId ? "Reassign" : "Assign"}</h2>
+              <h2 className="font-semibold text-slate-900">{wo.assignedToId ? "People on this job" : "Assign"}</h2>
               <ActionForm action={assignWorkOrder.bind(null, wo.id)} className="mt-3 space-y-3">
-                <Field label="Assign to" htmlFor="assign-to">
-                  <select id="assign-to" name="assignedToId" defaultValue={wo.assignedToId ?? ""} required className={inputClass}>
-                    <option value="" disabled>Choose a person…</option>
-                    {assignees.map((a) => (
-                      <option key={a.id} value={a.id}>
-                        {a.fullName}
-                        {a.jobTitle ? ` — ${a.jobTitle}` : ""}
-                      </option>
-                    ))}
-                  </select>
-                </Field>
+                <TeamFields assignees={assignees} leadId={wo.assignedToId} helperIds={detail.helpers.map((h) => h.id)} required idPrefix="assign" />
                 <Field label="Due date" htmlFor="assign-due">
                   <input id="assign-due" name="dueDate" type="date" defaultValue={wo.dueDate ?? ""} className={inputClass} />
                 </Field>
-                <SubmitButton pendingText="Assigning…" className="w-full">{wo.assignedToId ? "Reassign" : "Assign"}</SubmitButton>
+                <SubmitButton pendingText="Saving…" className="w-full">{wo.assignedToId ? "Save" : "Assign"}</SubmitButton>
               </ActionForm>
             </Card>
           )}

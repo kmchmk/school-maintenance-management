@@ -1,4 +1,4 @@
-import { and, count, eq, gte, sql, type SQL } from "drizzle-orm";
+import { and, count, gte, sql, type SQL } from "drizzle-orm";
 import { AlertTriangle, CheckCircle2, ClipboardList, Hourglass, Inbox, Plus, type LucideIcon } from "lucide-react";
 import Link from "next/link";
 import { Alert, ButtonLink, Card, cn, EmptyState, PageHeader } from "@/components/ui";
@@ -7,7 +7,7 @@ import { db } from "@/db";
 import { workOrders } from "@/db/schema";
 import { canAssign, canCreate, isManager, requireProfile } from "@/lib/auth";
 import { today } from "@/lib/dates";
-import { listWorkOrders, overdueCondition } from "@/lib/queries";
+import { listWorkOrders, onTeamCondition, overdueCondition } from "@/lib/queries";
 
 export const metadata = { title: "Dashboard" };
 
@@ -30,7 +30,7 @@ function Stat({ label, value, icon: Icon, href, tone }: { label: string; value: 
 export default async function DashboardPage() {
   const me = await requireProfile();
   const manager = isManager(me.role);
-  const scope: SQL | undefined = manager ? undefined : eq(workOrders.assignedToId, me.id);
+  const scope: SQL | undefined = manager ? undefined : onTeamCondition(me.id);
   const monthStart = today().slice(0, 8) + "01";
 
   const [byStatus, [overdue], [closedThisMonth]] = await Promise.all([

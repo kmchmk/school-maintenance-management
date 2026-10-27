@@ -5,15 +5,18 @@ import { db } from "@/db";
 import { profiles, workOrders } from "@/db/schema";
 import { BUILDINGS, TIME_ZONE, WORK_TYPES, type Building, type WorkType } from "./constants";
 import { hoursBetween, today } from "./dates";
+import { helpersFor } from "./queries";
 
 export async function reportRows(from: string, to: string) {
   const assignee = alias(profiles, "assignee");
-  return db
+  const rows = await db
     .select({ wo: workOrders, assigneeName: assignee.fullName, assigneeTitle: assignee.jobTitle })
     .from(workOrders)
     .leftJoin(assignee, eq(assignee.id, workOrders.assignedToId))
     .where(and(gte(workOrders.reportedDate, from), lte(workOrders.reportedDate, to)))
     .orderBy(workOrders.id);
+  const helpers = await helpersFor(rows.map((r) => r.wo.id));
+  return rows.map((r) => ({ ...r, helpers: helpers.get(r.wo.id) ?? [] }));
 }
 type Row = Awaited<ReturnType<typeof reportRows>>[number];
 
@@ -44,20 +47,26 @@ export function summarize(rows: Row[]) {
   const now = today();
   const overdue = (r: Row) => isOpen(r) && !!r.wo.dueDate && r.wo.dueDate < now;
 
-  const byTech = new Map<string, Row[]>();
+  // Everyone on a job (the lead and any extra people) gets credit for it.
+  const byTech = new Map<string, { name: string; title: string | null; rows: Row[] }>();
+  const credit = (id: string, name: string, title: string | null, r: Row) => {
+    if (!byTech.has(id)) byTech.set(id, { name, title, rows: [] });
+    byTech.get(id)!.rows.push(r);
+  };
   for (const r of rows) {
     if (!r.wo.assignedToId) continue;
-    byTech.set(r.wo.assignedToId, [...(byTech.get(r.wo.assignedToId) ?? []), r]);
+    credit(r.wo.assignedToId, r.assigneeName ?? "Unknown", r.assigneeTitle, r);
+    for (const h of r.helpers) credit(h.id, h.name, h.title, r);
   }
 
   const technicians: TechnicianKpi[] = [...byTech.entries()]
-    .map(([id, rs]) => {
+    .map(([id, { name, title, rows: rs }]) => {
       const done = rs.filter(isDone);
       const withDue = done.filter((r) => r.wo.dueDate && r.wo.completedAt);
       return {
         id,
-        name: rs[0].assigneeName ?? "Unknown",
-        title: rs[0].assigneeTitle,
+        name,
+        title,
         assigned: rs.length,
         completed: done.length,
         open: rs.filter(isOpen).length,

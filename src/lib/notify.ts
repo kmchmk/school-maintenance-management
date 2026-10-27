@@ -1,7 +1,7 @@
 import "server-only";
 import { and, eq, inArray } from "drizzle-orm";
 import { db } from "@/db";
-import { profiles, workOrders } from "@/db/schema";
+import { profiles, workOrderHelpers, workOrders } from "@/db/schema";
 import { APP_NAME, ASSIGNER_ROLES, BUILDING_LABELS, PRIORITY_LABELS, WORK_TYPE_LABELS } from "./constants";
 import { formatDate, workOrderRef } from "./dates";
 import { sendEmail } from "./email";
@@ -25,14 +25,22 @@ const HEADLINES: Record<NotifyEvent, string> = {
   reopened: "A work order has been reopened",
 };
 
-/** Emails the people who need to act on a work order event. */
-export async function notifyWorkOrder(workOrderId: number, event: NotifyEvent, note?: string | null) {
+/**
+ * Emails the people who need to act on a work order event.
+ * `onlyIds` narrows an "assigned" email to the people just added to the job.
+ */
+export async function notifyWorkOrder(workOrderId: number, event: NotifyEvent, note?: string | null, onlyIds?: string[]) {
   const [wo] = await db.select().from(workOrders).where(eq(workOrders.id, workOrderId));
   if (!wo) return;
 
   let recipientIds: string[] = [];
   if (event === "assigned" || event === "reopened" || event === "closed") {
-    if (wo.assignedToId) recipientIds = [wo.assignedToId];
+    const helpers = await db
+      .select({ id: workOrderHelpers.profileId })
+      .from(workOrderHelpers)
+      .where(eq(workOrderHelpers.workOrderId, wo.id));
+    recipientIds = [wo.assignedToId, ...helpers.map((h) => h.id)].filter((id): id is string => !!id);
+    if (onlyIds) recipientIds = recipientIds.filter((id) => onlyIds.includes(id));
   } else {
     // New work goes to the maintenance manager to assign; completed work goes to the
     // maintenance manager to close, and to whoever raised it.
