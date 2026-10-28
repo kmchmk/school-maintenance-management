@@ -1,7 +1,6 @@
 import { Download } from "lucide-react";
 import { btn, Card, cn, inputClass, PageHeader } from "@/components/ui";
-import { requireProfile } from "@/lib/auth";
-import { WORK_ROLES } from "@/lib/constants";
+import { isManager, requireProfile } from "@/lib/auth";
 import { BUILDING_LABELS, WORK_TYPE_LABELS } from "@/lib/constants";
 import { formatDate, formatHours } from "@/lib/dates";
 import { parseRange, reportRows, summarize } from "@/lib/reports";
@@ -36,7 +35,8 @@ function Bars({ title, items, labels }: { title: string; items: { key: string; t
 }
 
 export default async function ReportsPage({ searchParams }: { searchParams: Promise<{ from?: string; to?: string }> }) {
-  await requireProfile(WORK_ROLES);
+  // Everyone can view reports; the CSV export stays with management roles.
+  const me = await requireProfile();
   const range = parseRange(await searchParams);
   const s = summarize(await reportRows(range.from, range.to));
 
@@ -63,9 +63,11 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
           <input type="date" name="to" defaultValue={range.to} className={cn(inputClass, "py-2")} />
         </label>
         <button className={cn(btn.base, btn.secondary, "py-2")}>Update</button>
-        <a href={`/api/reports/export?from=${range.from}&to=${range.to}`} className={cn(btn.base, btn.ghost, "py-2")}>
-          <Download className="size-4" /> Export CSV
-        </a>
+        {isManager(me.role) && (
+          <a href={`/api/reports/export?from=${range.from}&to=${range.to}`} className={cn(btn.base, btn.ghost, "py-2")}>
+            <Download className="size-4" /> Export CSV
+          </a>
+        )}
       </form>
 
       <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">

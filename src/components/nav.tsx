@@ -16,7 +16,7 @@ import {
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-import { ASSIGNER_ROLES, CREATOR_ROLES, USER_ADMIN_ROLES, WORK_ROLES, type Role } from "@/lib/constants";
+import { ASSIGNER_ROLES, CREATOR_ROLES, USER_ADMIN_ROLES, type Role } from "@/lib/constants";
 import { cn } from "./ui";
 
 type Item = { href: string; label: string; icon: LucideIcon; roles?: Role[] };
@@ -26,7 +26,7 @@ const ITEMS: Item[] = [
   { href: "/work-orders", label: "Work orders", icon: ClipboardList },
   { href: "/work-orders/new", label: "New", icon: Plus, roles: CREATOR_ROLES },
   { href: "/board", label: "Board", icon: LayoutList },
-  { href: "/reports", label: "Reports", icon: BarChart3, roles: WORK_ROLES },
+  { href: "/reports", label: "Reports", icon: BarChart3 },
   { href: "/schedules", label: "Preventive", icon: CalendarClock, roles: ASSIGNER_ROLES },
   { href: "/users", label: "Users", icon: Users, roles: USER_ADMIN_ROLES },
   { href: "/account", label: "My account", icon: UserCog },
