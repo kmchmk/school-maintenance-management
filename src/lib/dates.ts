@@ -5,6 +5,11 @@ export function today(): string {
   return new Intl.DateTimeFormat("en-CA", { timeZone: TIME_ZONE }).format(new Date());
 }
 
+/** The school-local date (YYYY-MM-DD) of a timestamp. */
+export function localDate(d: Date): string {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: TIME_ZONE }).format(d);
+}
+
 export function formatDate(value: string | Date | null | undefined): string {
   if (!value) return "—";
   const d = typeof value === "string" ? new Date(`${value}T00:00:00`) : value;
@@ -27,7 +32,7 @@ export function formatDateTime(value: Date | null | undefined): string {
   }).format(value);
 }
 
-export function addFrequency(dateStr: string, frequency: Frequency): string {
+export function addFrequency(dateStr: string, frequency: Exclude<Frequency, "custom">): string {
   const [y, m, d] = dateStr.split("-").map(Number);
   const date = new Date(Date.UTC(y, m - 1, d));
   if (frequency === "weekly") date.setUTCDate(date.getUTCDate() + 7);
@@ -40,6 +45,29 @@ export function addFrequency(dateStr: string, frequency: Frequency): string {
     date.setUTCDate(Math.min(d, lastDay));
   }
   return date.toISOString().slice(0, 10);
+}
+
+/**
+ * The first of the yearly "MM-DD" dates that falls after `dateStr` (or on it, with `inclusive`).
+ * 29 February falls on the 28th in non-leap years.
+ */
+export function nextCustomDate(dateStr: string, monthDays: string[], inclusive = false): string | null {
+  if (monthDays.length === 0) return null;
+  const year = Number(dateStr.slice(0, 4));
+  const candidates = [year, year + 1].flatMap((y) =>
+    monthDays.map((md) => {
+      const [m, d] = md.split("-").map(Number);
+      const lastDay = new Date(Date.UTC(y, m, 0)).getUTCDate();
+      return `${y}-${String(m).padStart(2, "0")}-${String(Math.min(d, lastDay)).padStart(2, "0")}`;
+    }),
+  );
+  return candidates.filter((c) => (inclusive ? c >= dateStr : c > dateStr)).sort()[0] ?? null;
+}
+
+/** The next due date after `dateStr` for a schedule. */
+export function nextDue(dateStr: string, frequency: Frequency, customDates: string[]): string {
+  if (frequency === "custom") return nextCustomDate(dateStr, customDates) ?? addFrequency(dateStr, "yearly");
+  return addFrequency(dateStr, frequency);
 }
 
 /** Hours between two timestamps, or null when either is missing. */

@@ -44,6 +44,7 @@ export default async function SchedulesPage() {
                 <div className="flex items-start justify-between gap-2">
                   <span className="flex items-center gap-1.5 text-xs font-semibold text-teal-700">
                     <CalendarClock className="size-4" /> {FREQUENCY_LABELS[s.frequency]}
+                    {s.frequency === "custom" && s.customDates.length > 0 && `: ${s.customDates.map(monthDay).join(", ")}`}
                   </span>
                   {!s.active && <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-600">Paused</span>}
                 </div>
@@ -71,3 +72,7 @@ export default async function SchedulesPage() {
     </>
   );
 }
+
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+/** "03-15" → "15 Mar" */
+const monthDay = (md: string) => `${Number(md.slice(3))} ${MONTHS[Number(md.slice(0, 2)) - 1]}`;

@@ -51,10 +51,14 @@ export const schedules = pgTable("schedules", {
   description: text("description").notNull(),
   type: workTypeEnum("type").notNull(),
   building: buildingEnum("building").notNull(),
+  /** Extra instructions, copied into each generated work order under the task. */
+  details: text("details"),
   classroom: text("classroom"),
   priority: priorityEnum("priority").notNull().default("normal"),
   assignedToId: text("assigned_to_id").references(() => profiles.id),
   frequency: frequencyEnum("frequency").notNull(),
+  /** For the "custom" frequency: the dates it falls on every year, as "MM-DD". */
+  customDates: text("custom_dates").array().notNull().default([]),
   nextDueDate: date("next_due_date").notNull(),
   active: boolean("active").notNull().default(true),
   lastGeneratedAt: timestamp("last_generated_at", { withTimezone: true }),

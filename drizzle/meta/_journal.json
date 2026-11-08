@@ -29,6 +29,13 @@
       "when": 1793066092404,
       "tag": "0003_work_order_helpers",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1794138661674,
+      "tag": "0004_schedule_details_custom_dates_building",
+      "breakpoints": true
     }
   ]
 }

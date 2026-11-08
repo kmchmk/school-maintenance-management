@@ -34,13 +34,14 @@ export const WORK_TYPE_LABELS: Record<WorkType, string> = {
   other: "Other",
 };
 
-export const BUILDINGS = ["al_building", "main_building", "primary_building", "eyfs_site", "other"] as const;
+export const BUILDINGS = ["al_building", "main_building", "primary_building", "eyfs_site", "main_and_eyfs", "other"] as const;
 export type Building = (typeof BUILDINGS)[number];
 export const BUILDING_LABELS: Record<Building, string> = {
   al_building: "AL Building",
   main_building: "Main Building",
   primary_building: "Primary Building",
   eyfs_site: "EYFS Site",
+  main_and_eyfs: "Both Main School and EYFS",
   other: "Other / Grounds",
 };
 
@@ -63,7 +64,8 @@ export const STATUS_LABELS: Record<Status, string> = {
   closed: "Closed",
 };
 
-export const FREQUENCIES = ["weekly", "monthly", "quarterly", "half_yearly", "yearly"] as const;
+/** "custom" repeats on hand-picked dates every year (schedules.customDates). */
+export const FREQUENCIES = ["weekly", "monthly", "quarterly", "half_yearly", "yearly", "custom"] as const;
 export type Frequency = (typeof FREQUENCIES)[number];
 export const FREQUENCY_LABELS: Record<Frequency, string> = {
   weekly: "Weekly",
@@ -71,6 +73,7 @@ export const FREQUENCY_LABELS: Record<Frequency, string> = {
   quarterly: "Every 3 months",
   half_yearly: "Every 6 months",
   yearly: "Yearly",
+  custom: "Custom dates",
 };
 
 export const MAX_PHOTOS = 4;

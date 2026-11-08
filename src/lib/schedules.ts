@@ -2,7 +2,7 @@ import "server-only";
 import { and, eq, lte } from "drizzle-orm";
 import { db } from "@/db";
 import { profiles, schedules, workOrderEvents, workOrders } from "@/db/schema";
-import { addFrequency, today } from "./dates";
+import { nextDue, today } from "./dates";
 import { notifyWorkOrder } from "./notify";
 
 /**
@@ -22,7 +22,7 @@ export async function generateDueWorkOrders(): Promise<number[]> {
   for (const { s, assigneeActive } of due) {
     const assignedToId = s.assignedToId && assigneeActive ? s.assignedToId : null;
     let next = s.nextDueDate;
-    while (next <= now) next = addFrequency(next, s.frequency);
+    while (next <= now) next = nextDue(next, s.frequency, s.customDates);
 
     // Claim the schedule first so overlapping runs can't create duplicates.
     const claimed = await db
@@ -40,7 +40,7 @@ export async function generateDueWorkOrders(): Promise<number[]> {
         type: s.type,
         building: s.building,
         classroom: s.classroom,
-        description: s.description,
+        description: s.details ? `${s.description}\n\n${s.details}` : s.description,
         priority: s.priority,
         dueDate: s.nextDueDate < now ? now : s.nextDueDate,
         status: assignedToId ? "assigned" : "open",

@@ -23,7 +23,7 @@ Work order flow (from the Maintenance Manager's requirements):
 3. The worker starts the job and marks it completed, optionally with photos as proof. The manager gets an email.
 4. The Maintenance Manager reviews the photos and **closes** it, or **reopens** it with a reason.
 
-Preventive maintenance schedules (weekly → yearly) create work orders automatically every day at
+Preventive maintenance schedules (weekly → yearly, or custom dates each year) create work orders automatically every day at
 06:00 Colombo time (`vercel.json` cron → `/api/cron/schedules`).
 
 Reports show, per technician: assigned, completed, completion rate, open, overdue, average response
